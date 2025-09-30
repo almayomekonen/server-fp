@@ -1,6 +1,6 @@
 // controllers/emailVerificationController.js
-const EmailVerification = require('../models/EmailVerification');
-const nodemailer = require('nodemailer');
+const EmailVerification = require("../models/EmailVerification");
+const nodemailer = require("nodemailer");
 
 // עוזר: יצירת קוד אימות Hash
 function hashCode(code) {
@@ -10,7 +10,8 @@ function hashCode(code) {
 // שליחת קוד אימות למייל
 exports.sendVerificationCode = async (req, res) => {
   const { email } = req.body;
-  if (!email) return res.status(400).json({ success: false, message: 'נא להזין אימייל' });
+  if (!email)
+    return res.status(400).json({ success: false, message: "נא להזין אימייל" });
 
   try {
     // יצירת קוד אקראי
@@ -27,48 +28,65 @@ exports.sendVerificationCode = async (req, res) => {
 
     // שליחת המייל
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS }
+      host: process.env.EMAIL_HOST || "smtp.gmail.com",
+      port: Number(process.env.EMAIL_PORT || 465),
+      secure: String(process.env.EMAIL_SECURE || "true") === "true",
+      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 10000,
     });
 
     await transporter.sendMail({
-      from: process.env.EMAIL_USER,
+      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
       to: email,
-      subject: 'קוד אימות',
-      text: `קוד האימות שלך הוא: ${code}`
+      subject: "קוד אימות",
+      text: `קוד האימות שלך הוא: ${code}`,
     });
 
-    res.json({ success: true, message: 'קוד אימות נשלח למייל' });
+    res.json({ success: true, message: "קוד אימות נשלח למייל" });
   } catch (err) {
-    console.error('sendVerificationCode error:', err);
-    res.status(500).json({ success: false, message: 'שגיאה בשליחת קוד האימות' });
+    console.error("sendVerificationCode error:", err);
+    res
+      .status(500)
+      .json({ success: false, message: "שגיאה בשליחת קוד האימות" });
   }
 };
 
 // אימות הקוד שהמשתמש קיבל
 exports.verifyCode = async (req, res) => {
   const { email, code } = req.body;
-  if (!email || !code) return res.status(400).json({ success: false, message: 'חסר אימייל או קוד' });
+  if (!email || !code)
+    return res
+      .status(400)
+      .json({ success: false, message: "חסר אימייל או קוד" });
 
   try {
-    const record = await EmailVerification.findOne({ email }).select('+codeHash +expiresAt');
-    if (!record) return res.status(404).json({ success: false, message: 'לא נמצאה בקשת אימות' });
+    const record = await EmailVerification.findOne({ email }).select(
+      "+codeHash +expiresAt"
+    );
+    if (!record)
+      return res
+        .status(404)
+        .json({ success: false, message: "לא נמצאה בקשת אימות" });
 
     if (record.expiresAt < new Date()) {
-      return res.status(400).json({ success: false, message: 'קוד האימות פג תוקף' });
+      return res
+        .status(400)
+        .json({ success: false, message: "קוד האימות פג תוקף" });
     }
 
     if (hashCode(code) !== record.codeHash) {
-      return res.status(400).json({ success: false, message: 'קוד אימות שגוי' });
+      return res
+        .status(400)
+        .json({ success: false, message: "קוד אימות שגוי" });
     }
 
-// הצלחה – מוחקים את הרשומה מה-DB
-await EmailVerification.findByIdAndDelete(record._id);
+    // הצלחה – מוחקים את הרשומה מה-DB
+    await EmailVerification.findByIdAndDelete(record._id);
 
-
-    res.json({ success: true, message: 'האימות הצליח!' });
+    res.json({ success: true, message: "האימות הצליח!" });
   } catch (err) {
-    console.error('verifyCode error:', err);
-    res.status(500).json({ success: false, message: 'שגיאה באימות הקוד' });
+    console.error("verifyCode error:", err);
+    res.status(500).json({ success: false, message: "שגיאה באימות הקוד" });
   }
 };
