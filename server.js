@@ -52,10 +52,7 @@ app.use("/api/auth", require("./routes/auth"));
 
 // MongoDB
 mongoose
-  .connect(process.env.MONGO_URL || process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGO_URL || process.env.MONGO_URI)
   .then(async () => {
     console.log("Connected to MongoDB");
 
