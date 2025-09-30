@@ -1,43 +1,30 @@
-// controllers/emailVerificationController.js
 const EmailVerification = require("../models/EmailVerification");
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-// עוזר: יצירת קוד אימות Hash
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 function hashCode(code) {
   return EmailVerification.hashCode(code);
 }
 
-// שליחת קוד אימות למייל
 exports.sendVerificationCode = async (req, res) => {
   const { email } = req.body;
   if (!email)
     return res.status(400).json({ success: false, message: "נא להזין אימייל" });
 
   try {
-    // יצירת קוד אקראי
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const codeHash = hashCode(code);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // תוקף 10 דקות
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-    // upsert - יוצרים או מעדכנים לפי email
     await EmailVerification.findOneAndUpdate(
       { email },
       { codeHash, expiresAt, verified: false },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // שליחת המייל
-    const transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || "smtp.gmail.com",
-      port: Number(process.env.EMAIL_PORT || 465),
-      secure: String(process.env.EMAIL_SECURE || "true") === "true",
-      auth: { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM || process.env.EMAIL_USER,
+    await resend.emails.send({
+      from: "onboarding@resend.dev",
       to: email,
       subject: "קוד אימות",
       text: `קוד האימות שלך הוא: ${code}`,
@@ -52,7 +39,7 @@ exports.sendVerificationCode = async (req, res) => {
   }
 };
 
-// אימות הקוד שהמשתמש קיבל
+// verifyCode נשאר אותו דבר...
 exports.verifyCode = async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code)
@@ -81,9 +68,7 @@ exports.verifyCode = async (req, res) => {
         .json({ success: false, message: "קוד אימות שגוי" });
     }
 
-    // הצלחה – מוחקים את הרשומה מה-DB
     await EmailVerification.findByIdAndDelete(record._id);
-
     res.json({ success: true, message: "האימות הצליח!" });
   } catch (err) {
     console.error("verifyCode error:", err);
