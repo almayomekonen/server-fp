@@ -1,14 +1,14 @@
-const mongoose = require('mongoose');
-const User = require('../models/User');
-const Experiment = require('../models/Experiment');
-const Group = require('../models/Group');
-const Statement = require('../models/Statement');
-const Copy = require('../models/Copy');
-const Task = require('../models/Task');
-const CopyMessage = require('../models/CopyMessage');
-const TaskMessage = require('../models/TaskMessage');
-const Comment = require('../models/Comment');
-const Comparison = require('../models/Comparison');
+const mongoose = require("mongoose");
+const User = require("../models/User");
+const Experiment = require("../models/Experiment");
+const Group = require("../models/Group");
+const Statement = require("../models/Statement");
+const Copy = require("../models/Copy");
+const Task = require("../models/Task");
+const CopyMessage = require("../models/CopyMessage");
+const TaskMessage = require("../models/TaskMessage");
+const Comment = require("../models/Comment");
+const Comparison = require("../models/Comparison");
 
 /**
  * Delete Copy with all its dependencies (cascade)
@@ -16,8 +16,13 @@ const Comparison = require('../models/Comparison');
 async function deleteCopyCascade(copyId, session) {
   await CopyMessage.deleteMany({ copyId }).session(session);
   await Comment.deleteMany({ copyId }).session(session);
-  await Comparison.deleteMany({ $or: [{ copyA: copyId }, { copyB: copyId }] }).session(session);
-  await Task.updateMany({ copiesId: copyId }, { $pull: { copiesId: copyId } }).session(session);
+  await Comparison.deleteMany({
+    $or: [{ copyA: copyId }, { copyB: copyId }],
+  }).session(session);
+  await Task.updateMany(
+    { copiesId: copyId },
+    { $pull: { copiesId: copyId } }
+  ).session(session);
   await Copy.findByIdAndDelete(copyId).session(session);
 }
 
@@ -73,19 +78,25 @@ async function deleteExperimentCascade(experimentId, session) {
  */
 async function deleteUserCascade(userId, session) {
   // Copies created as coder
-  const copies = await Copy.find({ $or: [{ investigatorId: userId }, { coderId: userId }] }).session(session);
+  const copies = await Copy.find({
+    $or: [{ investigatorId: userId }, { coderId: userId }],
+  }).session(session);
   for (const copy of copies) {
     await deleteCopyCascade(copy._id, session);
   }
 
   // Experiments created as investigator
-  const experiments = await Experiment.find({ investigatorId: userId }).session(session);
+  const experiments = await Experiment.find({ investigatorId: userId }).session(
+    session
+  );
   for (const exp of experiments) {
     await deleteExperimentCascade(exp._id, session);
   }
 
   // Tasks assigned or created
-  const tasks = await Task.find({ $or: [{ investigatorId: userId }, { coderId: userId }] }).session(session);
+  const tasks = await Task.find({
+    $or: [{ investigatorId: userId }, { coderId: userId }],
+  }).session(session);
   for (const task of tasks) {
     await deleteTaskCascade(task._id, session);
   }

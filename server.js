@@ -11,8 +11,6 @@ const Color = require("./models/Color");
 const app = express();
 
 app.use(helmet());
-
-// Middlewares
 app.use(express.json());
 app.use(cookieParser());
 
@@ -21,8 +19,6 @@ const allowedOrigins = [
   process.env.RAILWAY_STATIC_URL,
   process.env.FRONTEND_URL,
 ];
-
-console.log("test");
 
 app.use(
   cors({
@@ -56,14 +52,13 @@ app.use("/api/auth", require("./routes/auth"));
 
 // MongoDB
 mongoose
-  .connect(process.env.MONGO_URI, {
+  .connect(process.env.MONGO_URL || process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
   .then(async () => {
-    console.log("✅ Connected to MongoDB");
+    console.log("Connected to MongoDB");
 
-    // יצירת ADMIN אם לא קיים
     const admin = await User.findOne({ username: "ADMIN" });
     if (!admin) {
       const defaultAdmin = new User({
@@ -73,12 +68,9 @@ mongoose
       });
       await defaultAdmin.setPassword("123");
       await defaultAdmin.save();
-      console.log("🎉 Created default ADMIN with password 123");
-    } else {
-      console.log("ℹ️ ADMIN user already exists");
+      console.log("Created default ADMIN");
     }
 
-    // יצירת צבעים דיפולטיביים אם לא קיימים
     const defaultColors = [
       { name: "yellow", code: "#FFFF00" },
       { name: "green", code: "#00FF00" },
@@ -88,21 +80,16 @@ mongoose
       const exists = await Color.findOne({ name: color.name });
       if (!exists) {
         await Color.create(color);
-        console.log(`🎨 Added default color: ${color.name}`);
-      } else {
-        console.log(`ℹ️ Color ${color.name} already exists`);
       }
     }
   })
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+  .catch((err) => console.error("MongoDB connection error:", err));
 
-// בדיקה שהשרת עובד
 app.get("/", (req, res) => {
   res.send("Hello from Node.js backend!");
 });
 
-// מאזין לבקשות
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
