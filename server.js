@@ -16,13 +16,17 @@ app.use(cookieParser());
 
 const allowedOrigins = [
   "http://localhost:3000",
+  process.env.CLIENT_ORIGIN,
   process.env.RAILWAY_STATIC_URL,
   process.env.FRONTEND_URL,
-];
+].filter(Boolean);
+
+console.log("Allowed origins:", allowedOrigins); // הוסף את זה
 
 app.use(
   cors({
     origin: function (origin, callback) {
+      console.log("Request from origin:", origin); // הוסף את זה
       if (!origin) return callback(null, true);
       if (allowedOrigins.indexOf(origin) === -1) {
         return callback(new Error("CORS policy: origin not allowed"), false);
