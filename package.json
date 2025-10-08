@@ -8,6 +8,8 @@
     "start:server": "cd server && npm start",
     "start:client": "cd client && npm start",
     "build:client": "cd client && npm run build",
+    "start": "cd server && npm start",
+    "build": "cd client && npm run build",
     "start:prod": "npm run install:all && npm run build:client && npm run start:server"
   }
 }
