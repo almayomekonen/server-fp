@@ -1,85 +1,155 @@
-const Statement = require('../models/Statement');
+// controllers/statementController.js
 
-const {
-  deleteStatementCascade,
-} = require('../services/deleteCascade');
-const mongoose = require('mongoose');
-
+const Statement = require("../models/Statement");
+const Copy = require("../models/Copy");
+const Comment = require("../models/Comment");
+const Comparison = require("../models/Comparison");
 
 // יצירת הצהרה
 exports.createStatement = async (req, res) => {
   try {
-    const {groupId, experimentId,name, slateText } = req.body;
-
-    const statement = new Statement({ name, text: slateText, groupId, experimentId});
+    const { name, slateText, groupId, experimentId } = req.body;
+    const statement = new Statement({ name, slateText, groupId, experimentId });
     await statement.save();
     res.status(201).json(statement);
   } catch (err) {
-        console.error('שגיאה ביצירת הצהרה:', err);  // <- הוספתי לוג
-
-    res.status(500).json({ message: 'שגיאה ביצירת הצהרה', error: err });
+    res.status(500).json({ message: "שגיאה ביצירת הצהרה", error: err });
   }
 };
 
-// כל ההצהרות
+// קבלת כל ההצהרות
 exports.getAllStatements = async (req, res) => {
   try {
     const statements = await Statement.find();
+    // ✅ ודא שיש slateText לכל statement (תאימות לאחור)
+    statements.forEach((statement) => {
+      if (!statement.slateText && statement.text) {
+        statement.slateText = statement.text;
+      }
+    });
     res.json(statements);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת הצהרות', error: err });
+    res.status(500).json({ message: "שגיאה בקבלת הצהרות", error: err });
   }
 };
 
-
-exports.deleteStatement = async (req, res) => {
-  const { id } = req.params;
-  const session = await mongoose.startSession();
-
-  try {
-    await session.withTransaction(async () => {
-      await deleteStatementCascade(id, session);
-    });
-
-    res.json({ message: 'הצהרה נמחקה בהצלחה', statementId: id });
-  } catch (err) {
-    res.status(err.status || 500).json({ message: 'שגיאה במחיקת הצהרה', error: err.message || err });
-  } finally {
-    session.endSession();
-  }
-};
-
-
-
-exports.getStatementById = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const statement = await Statement.findById(id);
-    if (!statement) return res.status(404).json({ message: 'הצהרה לא נמצאה' });
-    res.json(statement);
-  } catch (err) {
-    res.status(500).json({ message: 'שגיאה בטעינת הצהרה', error: err });
-  }
-};
-
-
-
+// קבלת הצהרות לפי קבוצה
 exports.getStatementsByGroupId = async (req, res) => {
   try {
     const { groupId } = req.params;
     const statements = await Statement.find({ groupId });
+    // ✅ ודא שיש slateText לכל statement (תאימות לאחור)
+    statements.forEach((statement) => {
+      if (!statement.slateText && statement.text) {
+        statement.slateText = statement.text;
+      }
+    });
     res.json(statements);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בטעינת הצהרות לפי קבוצה', error: err });
+    res
+      .status(500)
+      .json({ message: "שגיאה בקבלת הצהרות לפי קבוצה", error: err });
   }
 };
 
+// קבלת הצהרות לפי ניסוי
 exports.getStatementsByExperimentId = async (req, res) => {
   try {
     const { experimentId } = req.params;
     const statements = await Statement.find({ experimentId });
+    // ✅ ודא שיש slateText לכל statement (תאימות לאחור)
+    statements.forEach((statement) => {
+      if (!statement.slateText && statement.text) {
+        statement.slateText = statement.text;
+      }
+    });
     res.json(statements);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בטעינת הצהרות לפי ניסוי', error: err });
+    res
+      .status(500)
+      .json({ message: "שגיאה בקבלת הצהרות לפי ניסוי", error: err });
+  }
+};
+
+// קבלת הצהרה לפי ID
+exports.getStatementById = async (req, res) => {
+  try {
+    const statement = await Statement.findById(req.params.id);
+    if (!statement) {
+      return res.status(404).json({ message: "הצהרה לא נמצאה" });
+    }
+
+    // ✅ ודא שיש slateText (תאימות לאחור)
+    if (!statement.slateText && statement.text) {
+      statement.slateText = statement.text;
+    }
+
+    res.json(statement);
+  } catch (err) {
+    res.status(500).json({ message: "שגיאה בקבלת הצהרה", error: err });
+  }
+};
+
+// מחיקת הצהרה עם מחיקה קשקדית של כל התלויות
+exports.deleteStatement = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // בדיקה שההצהרה קיימת
+    const statement = await Statement.findById(id);
+    if (!statement) {
+      return res.status(404).json({ message: "הצהרה לא נמצאה" });
+    }
+
+    // שלב 1: מצא את כל העותקים של ההצהרה
+    const copies = await Copy.find({ statementId: id });
+    const copyIds = copies.map((c) => c._id);
+
+    // שלב 2: מחק את כל ההערות של העותקים
+    if (Comment) {
+      await Comment.deleteMany({ copyId: { $in: copyIds } });
+    }
+
+    // שלב 3: מחק את כל ההשוואות של העותקים
+    if (Comparison) {
+      await Comparison.deleteMany({
+        $or: [{ copyId1: { $in: copyIds } }, { copyId2: { $in: copyIds } }],
+      });
+    }
+
+    // שלב 4: מחק את כל העותקים
+    await Copy.deleteMany({ statementId: id });
+
+    // שלב 5: מחק את ההצהרה עצמה
+    await Statement.findByIdAndDelete(id);
+
+    res.json({
+      message: "ההצהרה וכל התלויות שלה נמחקו בהצלחה",
+      statementId: id,
+    });
+  } catch (err) {
+    console.error("Error deleting statement:", err);
+    res.status(500).json({
+      message: "שגיאה במחיקת הצהרה",
+      error: err.message,
+    });
+  }
+};
+
+// עדכון הצהרה
+exports.updateStatement = async (req, res) => {
+  const { id } = req.params;
+  const updateFields = req.body;
+
+  try {
+    const updated = await Statement.findByIdAndUpdate(id, updateFields, {
+      new: true,
+    });
+    if (!updated) {
+      return res.status(404).json({ message: "הצהרה לא נמצאה" });
+    }
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ message: "שגיאה בעדכון הצהרה", error });
   }
 };
