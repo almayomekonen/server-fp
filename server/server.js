@@ -9,26 +9,39 @@ const User = require("./models/User");
 const Color = require("./models/Color");
 
 const app = express();
-
+app.set("trust proxy", 1);
 app.use(helmet());
-
-// Middlewares
 app.use(express.json());
 app.use(cookieParser());
 
 const allowedOrigins = [
   "http://localhost:3000",
+  process.env.CLIENT_ORIGIN,
   process.env.RAILWAY_STATIC_URL,
   process.env.FRONTEND_URL,
-];
+  "https://client-fp-production.up.railway.app",
+  "https://*.up.railway.app",
+].filter(Boolean);
 
-console.log("test");
+console.log("Allowed origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: function (origin, callback) {
+      console.log("Request from origin:", origin);
       if (!origin) return callback(null, true);
-      if (allowedOrigins.indexOf(origin) === -1) {
+
+      // בדוק אם הכתובת מתאימה לאחד מה-origins המותרים
+      const isAllowed = allowedOrigins.some((allowedOrigin) => {
+        if (allowedOrigin.includes("*")) {
+          const pattern = allowedOrigin.replace("*", ".*");
+          return new RegExp(pattern).test(origin);
+        }
+        return allowedOrigin === origin;
+      });
+
+      if (!isAllowed) {
+        console.log("CORS blocked origin:", origin);
         return callback(new Error("CORS policy: origin not allowed"), false);
       }
       return callback(null, true);
@@ -55,15 +68,16 @@ app.use("/api/email-verification", require("./routes/emailVerification"));
 app.use("/api/auth", require("./routes/auth"));
 
 // MongoDB
-mongoose
-  .connect(process.env.MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
-  .then(async () => {
-    console.log("✅ Connected to MongoDB");
+console.log("🔍 Environment check:");
+console.log("MONGO_URL:", process.env.MONGO_URL);
+console.log("MONGO_URI:", process.env.MONGO_URI);
+console.log("NODE_ENV:", process.env.NODE_ENV);
 
-    // יצירת ADMIN אם לא קיים
+mongoose
+  .connect(process.env.MONGO_URL || process.env.MONGO_URI)
+  .then(async () => {
+    console.log("Connected to MongoDB");
+
     const admin = await User.findOne({ username: "ADMIN" });
     if (!admin) {
       const defaultAdmin = new User({
@@ -73,12 +87,9 @@ mongoose
       });
       await defaultAdmin.setPassword("123");
       await defaultAdmin.save();
-      console.log("🎉 Created default ADMIN with password 123");
-    } else {
-      console.log("ℹ️ ADMIN user already exists");
+      console.log("Created default ADMIN");
     }
 
-    // יצירת צבעים דיפולטיביים אם לא קיימים
     const defaultColors = [
       { name: "yellow", code: "#FFFF00" },
       { name: "green", code: "#00FF00" },
@@ -88,21 +99,16 @@ mongoose
       const exists = await Color.findOne({ name: color.name });
       if (!exists) {
         await Color.create(color);
-        console.log(`🎨 Added default color: ${color.name}`);
-      } else {
-        console.log(`ℹ️ Color ${color.name} already exists`);
       }
     }
   })
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
+  .catch((err) => console.error("MongoDB connection error:", err));
 
-// בדיקה שהשרת עובד
 app.get("/", (req, res) => {
   res.send("Hello from Node.js backend!");
 });
 
-// מאזין לבקשות
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`Server running on port ${PORT}`);
 });
