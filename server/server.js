@@ -62,8 +62,10 @@ app.use("/api/email-verification", require("./routes/emailVerification"));
 app.use("/api/auth", require("./routes/auth"));
 
 // MongoDB
+const mongoUri = process.env.MONGO_URL || process.env.MONGO_URI;
+
 mongoose
-  .connect(process.env.MONGO_URI, {
+  .connect(mongoUri, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
   })
