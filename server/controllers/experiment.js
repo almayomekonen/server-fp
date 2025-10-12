@@ -90,14 +90,12 @@ exports.getInvestigatorNameByExperimentId = async (req, res) => {
 
 exports.deleteExperiment = async (req, res) => {
   const { id } = req.params;
-  const session = await mongoose.startSession();
 
   try {
     console.log(`🗑️  Starting delete for experiment: ${id}`);
 
-    await session.withTransaction(async () => {
-      await deleteExperimentCascade(id, session);
-    });
+    // Delete without transactions (Railway MongoDB doesn't support them)
+    await deleteExperimentCascade(id, null);
 
     console.log(`✅ Experiment deleted successfully: ${id}`);
     res.json({ message: "הניסוי נמחק בהצלחה", experimentId: id });
@@ -107,7 +105,5 @@ exports.deleteExperiment = async (req, res) => {
     res
       .status(err.status || 500)
       .json({ message: "שגיאה במחיקת ניסוי", error: err.message || err });
-  } finally {
-    session.endSession();
   }
 };
