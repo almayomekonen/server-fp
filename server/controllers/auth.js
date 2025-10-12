@@ -2,7 +2,6 @@
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 
-// controllers/auth.js
 exports.login = async (req, res) => {
   const { username, password } = req.body;
 
@@ -18,16 +17,28 @@ exports.login = async (req, res) => {
     const token = jwt.sign(
       { id: user._id, role: user.role },
       process.env.ACCESS_TOKEN_SECRET,
-      { expiresIn: "1h" }
+      { expiresIn: "7d" }
     );
 
-    // שולח token ב-httpOnly cookie במקום ב-localStorage
-    res.cookie("token", token, {
+    // 🔥 שינוי הגדרות לפי סביבה
+    const isProduction = process.env.NODE_ENV === "production";
+
+    const cookieOptions = {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // חובה ל-HTTPS בפרודקשן
-      sameSite: process.env.NODE_ENV === "production" ? "Strict" : "Lax", // Lax בפיתוח
-      maxAge: 60 * 60 * 1000, // שעה
-    });
+      secure: isProduction, // true רק בפרודקשן
+      sameSite: isProduction ? "none" : "lax", // none בפרודקשן, lax בפיתוח
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    };
+
+    console.log("🍪 Setting cookie with options:", cookieOptions);
+    console.log("🌍 Request origin:", req.headers.origin);
+    console.log("🔒 Is production:", isProduction);
+    console.log("🔐 Protocol:", req.protocol);
+    console.log("🔗 Secure?:", req.secure);
+
+    res.cookie("token", token, cookieOptions);
+
+    console.log("✅ Cookie set successfully for user:", user.username);
 
     res.json({
       user: {
@@ -42,17 +53,17 @@ exports.login = async (req, res) => {
   }
 };
 
-// controllers/auth.js
 exports.logout = (req, res) => {
+  const isProduction = process.env.NODE_ENV === "production";
+
   res.clearCookie("token", {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: process.env.NODE_ENV === "production" ? "Strict" : "Lax",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
   });
   res.json({ message: "Logged out successfully" });
 };
 
-// בדיקת אותנטיקציה נוכחית
 exports.me = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-passwordHash");

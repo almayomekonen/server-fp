@@ -10,37 +10,34 @@ const Color = require("./models/Color");
 
 const app = express();
 
+app.set("trust proxy", 1);
+
 app.use(helmet());
 
 // Middlewares
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS Configuration - תיקון!
+// CORS Configuration - תיקון מלא!
 const allowedOrigins = [
   "http://localhost:3000",
   "https://client-fp-production.up.railway.app",
-  process.env.CLIENT_ORIGIN,
-  process.env.FRONTEND_URL,
-].filter(Boolean); // מסנן undefined
+].filter(Boolean);
 
 console.log("🔧 Allowed CORS origins:", allowedOrigins);
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // אפשר בקשות ללא origin (כמו Postman)
       if (!origin) return callback(null, true);
-
       if (allowedOrigins.includes(origin)) {
-        console.log(`✅ Allowed origin: ${origin}`);
         return callback(null, true);
       }
-
-      console.log(`❌ Blocked origin: ${origin}`);
       return callback(new Error("CORS policy: origin not allowed"), false);
     },
-    credentials: true,
+    credentials: true, // ← חשוב!
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ← הוסף
+    allowedHeaders: ["Content-Type", "Authorization"], // ← הוסף
   })
 );
 
