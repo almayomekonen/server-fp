@@ -93,12 +93,17 @@ exports.deleteExperiment = async (req, res) => {
   const session = await mongoose.startSession();
 
   try {
+    console.log(`🗑️  Starting delete for experiment: ${id}`);
+
     await session.withTransaction(async () => {
       await deleteExperimentCascade(id, session);
     });
 
+    console.log(`✅ Experiment deleted successfully: ${id}`);
     res.json({ message: "הניסוי נמחק בהצלחה", experimentId: id });
   } catch (err) {
+    console.error(`❌ Error deleting experiment ${id}:`, err);
+    console.error("Stack:", err.stack);
     res
       .status(err.status || 500)
       .json({ message: "שגיאה במחיקת ניסוי", error: err.message || err });
