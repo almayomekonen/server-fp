@@ -41,6 +41,54 @@ app.use(
   })
 );
 
+// 🗑️ TEMPORARY CLEANUP ENDPOINT - DELETE AFTER USE!
+app.get("/api/admin/cleanup-orphans", async (req, res) => {
+  try {
+    const Copy = require("./models/Copy");
+    const Statement = require("./models/Statement");
+    const Experiment = require("./models/Experiment");
+
+    const allCopies = await Copy.find({}).lean();
+    const orphanedIds = [];
+    const details = [];
+
+    for (const copy of allCopies) {
+      const statement = await Statement.findById(copy.statementId);
+      const experiment = await Experiment.findById(copy.experimentId);
+
+      if (!statement || !experiment) {
+        orphanedIds.push(copy._id);
+        details.push({
+          copyId: copy._id,
+          statementExists: !!statement,
+          experimentExists: !!experiment,
+          statementId: copy.statementId,
+          experimentId: copy.experimentId,
+        });
+      }
+    }
+
+    if (orphanedIds.length === 0) {
+      return res.json({
+        success: true,
+        message: "No orphaned copies found!",
+        deletedCount: 0,
+      });
+    }
+
+    const result = await Copy.deleteMany({ _id: { $in: orphanedIds } });
+
+    res.json({
+      success: true,
+      message: `Deleted ${result.deletedCount} orphaned copies`,
+      deletedCount: result.deletedCount,
+      details,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Routes
 app.use("/api/registration", require("./routes/registration"));
 app.use("/api/users", require("./routes/user"));
