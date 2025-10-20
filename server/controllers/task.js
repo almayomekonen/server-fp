@@ -1,12 +1,8 @@
 // controllers/task.js
 
-const Task = require('../models/Task');
-const {
-  deleteTaskCascade,
-} = require('../services/deleteCascade');
-const mongoose = require('mongoose');
-
-
+const Task = require("../models/Task");
+const { deleteTaskCascade } = require("../services/deleteCascade");
+const mongoose = require("mongoose");
 
 exports.createTask = async (req, res) => {
   try {
@@ -15,7 +11,7 @@ exports.createTask = async (req, res) => {
     await task.save();
     res.status(201).json(task);
   } catch (err) {
-    res.status(500).json({ error: 'שגיאה ביצירת משימה', details: err });
+    res.status(500).json({ error: "שגיאה ביצירת משימה", details: err });
   }
 };
 
@@ -24,12 +20,9 @@ exports.getAllTasks = async (req, res) => {
     const tasks = await Task.find();
     res.json(tasks);
   } catch (err) {
-    res.status(500).json({ error: 'שגיאה בקבלת משימות', details: err });
+    res.status(500).json({ error: "שגיאה בקבלת משימות", details: err });
   }
 };
-
-
-
 
 // עדכון כל שדה של משימה
 exports.updateTask = async (req, res) => {
@@ -38,13 +31,13 @@ exports.updateTask = async (req, res) => {
 
   try {
     const task = await Task.findById(taskId);
-    if (!task) return res.status(404).json({ message: 'המשימה לא נמצאה' });
+    if (!task) return res.status(404).json({ message: "המשימה לא נמצאה" });
 
-        // אם רוצים לבצע עדכון על מערך readBy
+    // אם רוצים לבצע עדכון על מערך readBy
     if (updateFields.addCopy) {
       const copyId = updateFields.addCopy;
       if (!task.copiesId.includes(copyId)) {
-       task.copiesId.push(copyId);
+        task.copiesId.push(copyId);
       }
       delete updateFields.addCopy;
     }
@@ -52,7 +45,7 @@ exports.updateTask = async (req, res) => {
     // הסרת עותק מהמערך
     if (updateFields.removeCopy) {
       const copyId = updateFields.removeCopy;
-      task.copiesId = task.copiesId.filter(id => id.toString() !== copyId);
+      task.copiesId = task.copiesId.filter((id) => id.toString() !== copyId);
       delete updateFields.removeCopy;
     }
 
@@ -60,26 +53,23 @@ exports.updateTask = async (req, res) => {
     task.lastUpdate = new Date(); // אם את רוצה לעקוב אחרי עדכונים
     await task.save();
 
-    res.json({ message: 'המשימה עודכנה', task });
+    res.json({ message: "המשימה עודכנה", task });
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בעדכון המשימה', error: err });
+    res.status(500).json({ message: "שגיאה בעדכון המשימה", error: err });
   }
 };
 
-
 exports.deleteTask = async (req, res) => {
   const { id } = req.params;
-  const session = await mongoose.startSession();
 
   try {
-    await session.withTransaction(async () => {
-      await deleteTaskCascade(id, session);
-    });
+    await deleteTaskCascade(id, null);
 
-    res.json({ message: 'המשימה נמחקה בהצלחה', taskId: id });
+    res.json({ message: "המשימה נמחקה בהצלחה", taskId: id });
   } catch (err) {
-    res.status(err.status || 500).json({ message: 'שגיאה במחיקת משימה', error: err.message || err });
-  } finally {
-    session.endSession();
+    console.error("Error deleting task:", err);
+    res
+      .status(err.status || 500)
+      .json({ message: "שגיאה במחיקת משימה", error: err.message || err });
   }
 };

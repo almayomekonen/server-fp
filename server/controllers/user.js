@@ -1,22 +1,16 @@
-//controllers/user.js
+const mongoose = require("mongoose");
 
-const mongoose = require('mongoose');
-
-const User = require('../models/User');
-const {
-  deleteUserCascade,
-} = require('../services/deleteCascade');
+const User = require("../models/User");
+const { deleteUserCascade } = require("../services/deleteCascade");
 
 exports.getAllUsers = async (req, res) => {
   try {
-    const users = await User.find().select("-passwordHash"); 
+    const users = await User.find().select("-passwordHash");
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בשרת', err });
+    res.status(500).json({ message: "שגיאה בשרת", err });
   }
 };
-
-
 
 exports.updateUser = async (req, res) => {
   const userId = req.params.id;
@@ -25,7 +19,7 @@ exports.updateUser = async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: 'משתמש לא נמצא' });
+      return res.status(404).json({ message: "משתמש לא נמצא" });
     }
 
     // אם רוצים לעדכן סיסמה חדשה – נטפל בזה בנפרד
@@ -34,33 +28,37 @@ exports.updateUser = async (req, res) => {
       delete updateFields.newPassword;
     }
 
+    // ✅ If role is changing, increment tokenVersion to invalidate old tokens
+    if (updateFields.role && updateFields.role !== user.role) {
+      user.tokenVersion = (user.tokenVersion || 0) + 1;
+      console.log(
+        `🔄 Role changed for user ${userId}: ${user.role} → ${updateFields.role}, tokenVersion: ${user.tokenVersion}`
+      );
+    }
+
     // מיזוג שדות רגילים
     Object.assign(user, updateFields);
     user.lastUpdate = new Date();
 
     await user.save();
 
-    res.json({ message: 'המשתמש עודכן בהצלחה', user });
+    res.json({ message: "המשתמש עודכן בהצלחה", user });
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בעדכון המשתמש', error: err });
+    res.status(500).json({ message: "שגיאה בעדכון המשתמש", error: err });
   }
 };
-
 
 exports.deleteUser = async (req, res) => {
   const { id } = req.params;
-  const session = await mongoose.startSession();
 
   try {
-    await session.withTransaction(async () => {
-      await deleteUserCascade(id, session);
-    });
+    await deleteUserCascade(id, null);
 
-    res.json({ message: 'המשתמש נמחק בהצלחה', userId: id });
+    res.json({ message: "המשתמש נמחק בהצלחה", userId: id });
   } catch (err) {
-    res.status(err.status || 500).json({ message: 'שגיאה במחיקת משתמש', error: err.message || err });
-  } finally {
-    session.endSession();
+    console.error("Error deleting user:", err);
+    res
+      .status(err.status || 500)
+      .json({ message: "שגיאה במחיקת משתמש", error: err.message || err });
   }
 };
-

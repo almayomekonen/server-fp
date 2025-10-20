@@ -15,7 +15,11 @@ exports.login = async (req, res) => {
       return res.status(401).json({ message: "שם משתמש או סיסמה שגויים" });
 
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      {
+        id: user._id,
+        role: user.role,
+        tokenVersion: user.tokenVersion || 0, // ✅ Include version for invalidation
+      },
       process.env.ACCESS_TOKEN_SECRET,
       { expiresIn: "7d" }
     );

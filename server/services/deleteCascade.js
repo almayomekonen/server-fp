@@ -11,11 +11,9 @@ const Comment = require("../models/Comment");
 const Comparison = require("../models/Comparison");
 
 // Helper to apply session if it exists
-const withSession = (query, session) => (session ? query.session(session) : query);
+const withSession = (query, session) =>
+  session ? query.session(session) : query;
 
-/**
- * Delete Copy with all its dependencies (cascade)
- */
 async function deleteCopyCascade(copyId, session) {
   await withSession(CopyMessage.deleteMany({ copyId }), session);
   await withSession(Comment.deleteMany({ copyId }), session);
@@ -30,58 +28,34 @@ async function deleteCopyCascade(copyId, session) {
   await withSession(Copy.findByIdAndDelete(copyId), session);
 }
 
-/**
- * Delete Task with all its messages
- */
 async function deleteTaskCascade(taskId, session) {
   await withSession(TaskMessage.deleteMany({ taskId }), session);
   await withSession(Task.findByIdAndDelete(taskId), session);
 }
 
-/**
- * Delete Statement with all copies
- */
 async function deleteStatementCascade(statementId, session) {
-  const copies = await withSession(
-    Copy.find({ statementId }),
-    session
-  );
+  const copies = await withSession(Copy.find({ statementId }), session);
   for (const copy of copies) {
     await deleteCopyCascade(copy._id, session);
   }
   await withSession(Statement.findByIdAndDelete(statementId), session);
 }
 
-/**
- * Delete Group with all statements (and their copies)
- */
 async function deleteGroupCascade(groupId, session) {
-  const statements = await withSession(
-    Statement.find({ groupId }),
-    session
-  );
+  const statements = await withSession(Statement.find({ groupId }), session);
   for (const statement of statements) {
     await deleteStatementCascade(statement._id, session);
   }
   await withSession(Group.findByIdAndDelete(groupId), session);
 }
 
-/**
- * Delete Experiment with all tasks, groups, statements, and copies
- */
 async function deleteExperimentCascade(experimentId, session) {
-  const tasks = await withSession(
-    Task.find({ experimentId }),
-    session
-  );
+  const tasks = await withSession(Task.find({ experimentId }), session);
   for (const task of tasks) {
     await deleteTaskCascade(task._id, session);
   }
 
-  const groups = await withSession(
-    Group.find({ experimentId }),
-    session
-  );
+  const groups = await withSession(Group.find({ experimentId }), session);
   for (const group of groups) {
     await deleteGroupCascade(group._id, session);
   }
