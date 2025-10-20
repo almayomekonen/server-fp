@@ -6,6 +6,8 @@
 .env.test.local
 .env.production.local
 
+__tests__
+
 # Dependencies
 node_modules/
 
