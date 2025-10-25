@@ -5,6 +5,8 @@ const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 require("dotenv").config();
 
+console.log("APP STARTED");
+
 const User = require("./models/User");
 const Color = require("./models/Color");
 
@@ -41,7 +43,6 @@ app.use(
   })
 );
 
-// 🗑️ TEMPORARY CLEANUP ENDPOINT - DELETE AFTER USE!
 app.get("/api/admin/cleanup-orphans", async (req, res) => {
   try {
     const Copy = require("./models/Copy");

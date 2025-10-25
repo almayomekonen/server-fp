@@ -13,7 +13,7 @@ exports.createStatement = async (req, res) => {
     await statement.save();
     res.status(201).json(statement);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה ביצירת הצהרה", error: err });
+    res.status(500).json({ message: "Error creating statement", error: err });
   }
 };
 
@@ -29,7 +29,7 @@ exports.getAllStatements = async (req, res) => {
     });
     res.json(statements);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת הצהרות", error: err });
+    res.status(500).json({ message: "Error getting statements", error: err });
   }
 };
 
@@ -48,7 +48,7 @@ exports.getStatementsByGroupId = async (req, res) => {
   } catch (err) {
     res
       .status(500)
-      .json({ message: "שגיאה בקבלת הצהרות לפי קבוצה", error: err });
+      .json({ message: "Error getting statements by group", error: err });
   }
 };
 
@@ -67,7 +67,7 @@ exports.getStatementsByExperimentId = async (req, res) => {
   } catch (err) {
     res
       .status(500)
-      .json({ message: "שגיאה בקבלת הצהרות לפי ניסוי", error: err });
+      .json({ message: "Error getting statements by experiment", error: err });
   }
 };
 
@@ -76,7 +76,7 @@ exports.getStatementById = async (req, res) => {
   try {
     const statement = await Statement.findById(req.params.id);
     if (!statement) {
-      return res.status(404).json({ message: "הצהרה לא נמצאה" });
+      return res.status(404).json({ message: "Statement not found" });
     }
 
     // ✅ ודא שיש slateText (תאימות לאחור)
@@ -86,7 +86,7 @@ exports.getStatementById = async (req, res) => {
 
     res.json(statement);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת הצהרה", error: err });
+    res.status(500).json({ message: "Error getting statement", error: err });
   }
 };
 
@@ -98,7 +98,7 @@ exports.deleteStatement = async (req, res) => {
     // בדיקה שההצהרה קיימת
     const statement = await Statement.findById(id);
     if (!statement) {
-      return res.status(404).json({ message: "הצהרה לא נמצאה" });
+      return res.status(404).json({ message: "Statement not found" });
     }
 
     // שלב 1: מצא את כל העותקים של ההצהרה
@@ -124,13 +124,13 @@ exports.deleteStatement = async (req, res) => {
     await Statement.findByIdAndDelete(id);
 
     res.json({
-      message: "ההצהרה וכל התלויות שלה נמחקו בהצלחה",
+      message: "Statement and all dependencies deleted successfully",
       statementId: id,
     });
   } catch (err) {
     console.error("Error deleting statement:", err);
     res.status(500).json({
-      message: "שגיאה במחיקת הצהרה",
+      message: "Error deleting statement",
       error: err.message,
     });
   }
@@ -146,10 +146,10 @@ exports.updateStatement = async (req, res) => {
       new: true,
     });
     if (!updated) {
-      return res.status(404).json({ message: "הצהרה לא נמצאה" });
+      return res.status(404).json({ message: "Statement not found" });
     }
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ message: "שגיאה בעדכון הצהרה", error });
+    res.status(500).json({ message: "Error updating statement", error });
   }
 };

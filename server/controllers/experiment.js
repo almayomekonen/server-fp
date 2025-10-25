@@ -19,7 +19,7 @@ exports.createExperiment = async (req, res) => {
     await experiment.save();
     res.status(201).json(experiment);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה ביצירת ניסוי", error: err });
+    res.status(500).json({ message: "Error creating experiment", error: err });
   }
 };
 
@@ -29,7 +29,7 @@ exports.getAllExperiments = async (req, res) => {
     const experiments = await Experiment.find();
     res.json(experiments);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת ניסויים", error: err });
+    res.status(500).json({ message: "Error getting experiments", error: err });
   }
 };
 
@@ -43,48 +43,49 @@ exports.updateExperiment = async (req, res) => {
     });
     res.json(updated);
   } catch (error) {
-    res.status(500).json({ message: "שגיאה בעדכון ניסוי", error });
+    res.status(500).json({ message: "Error updating experiment", error });
   }
 };
 
-// קבלת ניסויים לפי מזהה חוקר
 exports.getExperimentsByInvestigatorId = async (req, res) => {
   try {
     const { investigatorId } = req.params;
 
-    // מחפש את כל הניסויים עם ה־investigatorId הזה
     const experiments = await Experiment.find({ investigatorId });
     res.json(experiments);
   } catch (err) {
-    res
-      .status(500)
-      .json({ message: "שגיאה בקבלת ניסויים לפי מזהה חוקר", error: err });
+    res.status(500).json({
+      message: "Error getting experiments by investigator",
+      error: err,
+    });
   }
 };
 
-// קבלת ניסוי לפי מזהה
 exports.getExperimentById = async (req, res) => {
   try {
     const experiment = await Experiment.findById(req.params.id);
-    if (!experiment) return res.status(404).json({ message: "ניסוי לא נמצא" });
+    if (!experiment)
+      return res.status(404).json({ message: "Experiment not found" });
     res.json(experiment);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת ניסוי", error: err });
+    res.status(500).json({ message: "Error getting experiment", error: err });
   }
 };
 
-// קבלת שם החוקר לפי ניסוי
 exports.getInvestigatorNameByExperimentId = async (req, res) => {
   try {
     const experiment = await Experiment.findById(req.params.id);
-    if (!experiment) return res.status(404).json({ message: "ניסוי לא נמצא" });
+    if (!experiment)
+      return res.status(404).json({ message: "Experiment not found" });
 
     const user = await User.findById(experiment.investigatorId);
-    if (!user) return res.status(404).json({ message: "חוקר לא נמצא" });
+    if (!user) return res.status(404).json({ message: "Researcher not found" });
 
     res.json(user.username);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת שם החוקר", error: err });
+    res
+      .status(500)
+      .json({ message: "Error getting investigator name", error: err });
   }
 };
 
@@ -92,18 +93,16 @@ exports.deleteExperiment = async (req, res) => {
   const { id } = req.params;
 
   try {
-    console.log(`🗑️  Starting delete for experiment: ${id}`);
-
-    // Delete without transactions (Railway MongoDB doesn't support them)
     await deleteExperimentCascade(id, null);
 
     console.log(`✅ Experiment deleted successfully: ${id}`);
-    res.json({ message: "הניסוי נמחק בהצלחה", experimentId: id });
+    res.json({ message: "Experiment deleted successfully", experimentId: id });
   } catch (err) {
     console.error(`❌ Error deleting experiment ${id}:`, err);
     console.error("Stack:", err.stack);
-    res
-      .status(err.status || 500)
-      .json({ message: "שגיאה במחיקת ניסוי", error: err.message || err });
+    res.status(err.status || 500).json({
+      message: "Error deleting experiment",
+      error: err.message || err,
+    });
   }
 };
