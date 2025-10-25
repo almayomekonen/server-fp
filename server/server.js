@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
+const http = require("http");
+const { Server } = require("socket.io");
 require("dotenv").config();
 
 console.log("APP STARTED");
@@ -11,6 +13,7 @@ const User = require("./models/User");
 const Color = require("./models/Color");
 
 const app = express();
+const server = http.createServer(app);
 
 app.set("trust proxy", 1);
 
@@ -42,6 +45,35 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"], // ← הוסף
   })
 );
+
+// Socket.io Configuration
+const io = new Server(server, {
+  cors: {
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS policy: origin not allowed"), false);
+    },
+    credentials: true,
+    methods: ["GET", "POST"],
+  },
+});
+
+// Socket.io connection handling
+io.on("connection", (socket) => {
+  console.log("👤 User connected:", socket.id);
+
+  socket.on("disconnect", () => {
+    console.log("👤 User disconnected:", socket.id);
+  });
+});
+
+// Export io instance for use in controllers
+global.io = io;
+
+console.log("🔌 Socket.io initialized");
 
 app.get("/api/admin/cleanup-orphans", async (req, res) => {
   try {
@@ -149,6 +181,7 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log(`🔌 Socket.io listening on port ${PORT}`);
 });

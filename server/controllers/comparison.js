@@ -1,8 +1,8 @@
-const Comparison = require('../models/Comparison');
+const Comparison = require("../models/Comparison");
 exports.createComparison = async (req, res) => {
   let { copyId1, copyId2 } = req.body;
   if (!copyId1 || !copyId2 || copyId1 === copyId2) {
-    return res.status(400).json({ message: 'פרמטרים לא חוקיים' });
+    return res.status(400).json({ message: "פרמטרים לא חוקיים" });
   }
 
   try {
@@ -11,7 +11,9 @@ exports.createComparison = async (req, res) => {
 
     const exists = await Comparison.findOne({ copyA: copyId1, copyB: copyId2 });
     if (exists) {
-      return res.status(200).json({ message: 'השוואה כבר קיימת', comparison: exists });
+      return res
+        .status(200)
+        .json({ message: "השוואה כבר קיימת", comparison: exists });
     }
 
     const comparison = new Comparison({ copyA: copyId1, copyB: copyId2 });
@@ -19,22 +21,34 @@ exports.createComparison = async (req, res) => {
 
     res.status(201).json(comparison);
   } catch (err) {
-    console.error('שגיאה בהוספת השוואה:', err);
-    res.status(500).json({ message: 'שגיאה בהוספת השוואה', error: err });
+    console.error("שגיאה בהוספת השוואה:", err);
+    res.status(500).json({ message: "שגיאה בהוספת השוואה", error: err });
   }
 };
 
-
 exports.deleteComparison = async (req, res) => {
-    try {
-        const { copyId1, copyId2 } = req.body;
-        let [a, b] = copyId1 > copyId2 ? [copyId2, copyId1] : [copyId1, copyId2];
-        const deleted = await Comparison.findOneAndDelete({ copyA: a, copyB: b });
-        if (!deleted) return res.status(404).json({ message: 'השוואה לא נמצאה' });
-        res.json({ message: 'השוואה נמחקה בהצלחה' });
-    } catch (err) {
-        res.status(500).json({ message: 'שגיאה במחיקת השוואה', error: err });
+  try {
+    const { copyId1, copyId2 } = req.body;
+    let [a, b] = copyId1 > copyId2 ? [copyId2, copyId1] : [copyId1, copyId2];
+    const deleted = await Comparison.findOneAndDelete({ copyA: a, copyB: b });
+    if (!deleted) return res.status(404).json({ message: "השוואה לא נמצאה" });
+
+    // Emit Socket.io event to notify all connected clients
+    if (global.io) {
+      global.io.emit("comparisonCancelled", {
+        copyId1: a,
+        copyId2: b,
+        message: "Comparison has been cancelled by the researcher",
+      });
+      console.log(
+        `🔔 Emitted comparisonCancelled event for copies: ${a} and ${b}`
+      );
     }
+
+    res.json({ message: "השוואה נמחקה בהצלחה" });
+  } catch (err) {
+    res.status(500).json({ message: "שגיאה במחיקת השוואה", error: err });
+  }
 };
 
 exports.removeAllComparisons = async (req, res) => {
@@ -43,15 +57,14 @@ exports.removeAllComparisons = async (req, res) => {
   try {
     // מוחק כל השוואה שבה העתק מעורב
     await Comparison.deleteMany({
-      $or: [{ copyA: copyId }, { copyB: copyId }]
+      $or: [{ copyA: copyId }, { copyB: copyId }],
     });
 
-    res.json({ message: 'כל ההשוואות של העותק הוסרו בהצלחה' });
+    res.json({ message: "כל ההשוואות של העותק הוסרו בהצלחה" });
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בהסרת כל ההשוואות', error: err });
+    res.status(500).json({ message: "שגיאה בהסרת כל ההשוואות", error: err });
   }
 };
-
 
 // קבלת כל ההשוואות
 exports.getAllComparisons = async (req, res) => {
@@ -59,33 +72,33 @@ exports.getAllComparisons = async (req, res) => {
     const comparisons = await Comparison.find();
     res.json(comparisons);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת השוואות', error: err });
+    res.status(500).json({ message: "שגיאה בקבלת השוואות", error: err });
   }
 };
-
 
 exports.getComparisonsForCopyById = async (req, res) => {
   const { copyId } = req.params;
 
   try {
     const comparisons = await Comparison.find({
-      $or: [{ copyA: copyId }, { copyB: copyId }]
+      $or: [{ copyA: copyId }, { copyB: copyId }],
     });
 
     // מחזיר רק את המזהים של העתק השני
-    const result = comparisons.map(c => (c.copyA.toString() === copyId ? c.copyB : c.copyA));
+    const result = comparisons.map((c) =>
+      c.copyA.toString() === copyId ? c.copyB : c.copyA
+    );
     res.json(result);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת השוואות', error: err });
+    res.status(500).json({ message: "שגיאה בקבלת השוואות", error: err });
   }
 };
-
 
 // בדיקה אם השוואה כבר קיימת
 exports.checkComparisonExists = async (req, res) => {
   let { copyId1, copyId2 } = req.body;
   if (!copyId1 || !copyId2 || copyId1 === copyId2) {
-    return res.status(400).json({ message: 'פרמטרים לא חוקיים' });
+    return res.status(400).json({ message: "פרמטרים לא חוקיים" });
   }
 
   try {
@@ -94,7 +107,7 @@ exports.checkComparisonExists = async (req, res) => {
     const exists = await Comparison.findOne({ copyA: copyId1, copyB: copyId2 });
     res.json({ exists: !!exists }); // מחזיר true או false
   } catch (err) {
-    console.error('שגיאה בבדיקת השוואה:', err);
-    res.status(500).json({ message: 'שגיאה בבדיקת השוואה', error: err });
+    console.error("שגיאה בבדיקת השוואה:", err);
+    res.status(500).json({ message: "שגיאה בבדיקת השוואה", error: err });
   }
 };
