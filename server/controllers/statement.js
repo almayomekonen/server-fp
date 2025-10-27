@@ -1,11 +1,9 @@
 // controllers/statementController.js
 
 const Statement = require("../models/Statement");
-const Copy = require("../models/Copy");
-const Comment = require("../models/Comment");
-const Comparison = require("../models/Comparison");
+const { deleteStatementCascade } = require("../services/deleteCascade");
 
-// יצירת הצהרה
+// Create statement
 exports.createStatement = async (req, res) => {
   try {
     const { name, slateText, groupId, experimentId } = req.body;
@@ -17,11 +15,11 @@ exports.createStatement = async (req, res) => {
   }
 };
 
-// קבלת כל ההצהרות
+// Get all statements
 exports.getAllStatements = async (req, res) => {
   try {
     const statements = await Statement.find();
-    // ✅ ודא שיש slateText לכל statement (תאימות לאחור)
+    // ✅ Ensure slateText exists for each statement (backward compatibility)
     statements.forEach((statement) => {
       if (!statement.slateText && statement.text) {
         statement.slateText = statement.text;
@@ -33,12 +31,12 @@ exports.getAllStatements = async (req, res) => {
   }
 };
 
-// קבלת הצהרות לפי קבוצה
+// Get statements by group
 exports.getStatementsByGroupId = async (req, res) => {
   try {
     const { groupId } = req.params;
     const statements = await Statement.find({ groupId });
-    // ✅ ודא שיש slateText לכל statement (תאימות לאחור)
+    // ✅ Ensure slateText exists for each statement (backward compatibility)
     statements.forEach((statement) => {
       if (!statement.slateText && statement.text) {
         statement.slateText = statement.text;
@@ -52,12 +50,12 @@ exports.getStatementsByGroupId = async (req, res) => {
   }
 };
 
-// קבלת הצהרות לפי ניסוי
+// Get statements by experiment
 exports.getStatementsByExperimentId = async (req, res) => {
   try {
     const { experimentId } = req.params;
     const statements = await Statement.find({ experimentId });
-    // ✅ ודא שיש slateText לכל statement (תאימות לאחור)
+    // ✅ Ensure slateText exists for each statement (backward compatibility)
     statements.forEach((statement) => {
       if (!statement.slateText && statement.text) {
         statement.slateText = statement.text;
@@ -71,7 +69,7 @@ exports.getStatementsByExperimentId = async (req, res) => {
   }
 };
 
-// קבלת הצהרה לפי ID
+// Get statement by ID
 exports.getStatementById = async (req, res) => {
   try {
     const statement = await Statement.findById(req.params.id);
@@ -79,7 +77,7 @@ exports.getStatementById = async (req, res) => {
       return res.status(404).json({ message: "Statement not found" });
     }
 
-    // ✅ ודא שיש slateText (תאימות לאחור)
+    // ✅ Ensure slateText exists (backward compatibility)
     if (!statement.slateText && statement.text) {
       statement.slateText = statement.text;
     }
@@ -90,38 +88,24 @@ exports.getStatementById = async (req, res) => {
   }
 };
 
-// מחיקת הצהרה עם מחיקה קשקדית של כל התלויות
+// Delete statement with full cascade deletion of all dependencies
 exports.deleteStatement = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // בדיקה שההצהרה קיימת
+    // Check if statement exists
     const statement = await Statement.findById(id);
     if (!statement) {
       return res.status(404).json({ message: "Statement not found" });
     }
 
-    // שלב 1: מצא את כל העותקים של ההצהרה
-    const copies = await Copy.find({ statementId: id });
-    const copyIds = copies.map((c) => c._id);
-
-    // שלב 2: מחק את כל ההערות של העותקים
-    if (Comment) {
-      await Comment.deleteMany({ copyId: { $in: copyIds } });
-    }
-
-    // שלב 3: מחק את כל ההשוואות של העותקים
-    if (Comparison) {
-      await Comparison.deleteMany({
-        $or: [{ copyId1: { $in: copyIds } }, { copyId2: { $in: copyIds } }],
-      });
-    }
-
-    // שלב 4: מחק את כל העותקים
-    await Copy.deleteMany({ statementId: id });
-
-    // שלב 5: מחק את ההצהרה עצמה
-    await Statement.findByIdAndDelete(id);
+    // Use cascade service to delete statement and all dependencies:
+    // - All copies under this statement
+    // - All copy messages for those copies
+    // - All comments for those copies
+    // - All comparisons involving those copies
+    // - Remove copies from Task copiesId arrays
+    await deleteStatementCascade(id, null);
 
     res.json({
       message: "Statement and all dependencies deleted successfully",
@@ -136,7 +120,7 @@ exports.deleteStatement = async (req, res) => {
   }
 };
 
-// עדכון הצהרה
+// Update statement
 exports.updateStatement = async (req, res) => {
   const { id } = req.params;
   const updateFields = req.body;

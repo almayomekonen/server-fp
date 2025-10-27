@@ -1,40 +1,61 @@
-const Comment = require('../models/Comment');
+const Comment = require("../models/Comment");
 
-// יצירת הערה
+// Create comment
 exports.createComment = async (req, res) => {
   try {
     const { userId, copyId, text, offset } = req.body;
-     
+
     if (!userId || !copyId || !text || offset == null) {
-        return res.status(404).json({ message: 'נא למלא את כל הפרטים' });
+      return res.status(404).json({ message: "Please fill in all details" });
     }
 
     const comment = new Comment({ userId, copyId, text, offset });
     await comment.save();
+
+    // Populate user info for real-time emission
+    await comment.populate("userId", "username");
+
+    // 🔴 Emit real-time event to all connected clients
+    if (global.io) {
+      global.io.emit("commentCreated", {
+        comment: comment.toObject(),
+        copyId: copyId,
+      });
+    }
+
     res.status(201).json(comment);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה ביצירת הערה', error: err });
+    res.status(500).json({ message: "Error creating comment", error: err });
   }
 };
 
-// קבלת כל ההערות
+// Get all comments
 exports.getAllComments = async (req, res) => {
   try {
-    const comments = await Comment.find();
+    const comments = await Comment.find().populate("userId", "username");
     res.json(comments);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת הערות', error: err });
+    res.status(500).json({ message: "Error getting comments", error: err });
   }
 };
 
-// מחיקת הערה
+// Delete comment
 exports.deleteComment = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deleted = await Comment.findByIdAndDelete(id);
-        if (!deleted) return res.status(404).json({ message: 'הערה לא נמצאה' });
-        res.json({ message: 'הערה נמחקה בהצלחה' });
-    } catch (err) {
-        res.status(500).json({ message: 'שגיאה במחיקת הערה', error: err });
+  try {
+    const { id } = req.params;
+    const deleted = await Comment.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Comment not found" });
+
+    // 🔴 Emit real-time event to all connected clients
+    if (global.io) {
+      global.io.emit("commentDeleted", {
+        commentId: id,
+        copyId: deleted.copyId,
+      });
     }
+
+    res.json({ message: "Comment deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting comment", error: err });
+  }
 };

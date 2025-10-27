@@ -2,31 +2,33 @@
 const EmailVerification = require("../models/EmailVerification");
 const nodemailer = require("nodemailer");
 
-// עוזר: יצירת קוד אימות Hash
+// Helper: Create verification code Hash
 function hashCode(code) {
   return EmailVerification.hashCode(code);
 }
 
-// שליחת קוד אימות למייל
+// Send verification code to email
 exports.sendVerificationCode = async (req, res) => {
   const { email } = req.body;
   if (!email)
-    return res.status(400).json({ success: false, message: "נא להזין אימייל" });
+    return res
+      .status(400)
+      .json({ success: false, message: "Please enter email" });
 
   try {
-    // יצירת קוד אקראי
+    // Generate random code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const codeHash = hashCode(code);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // תוקף 10 דקות
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Valid for 10 minutes
 
-    // upsert - יוצרים או מעדכנים לפי email
+    // upsert - create or update by email
     await EmailVerification.findOneAndUpdate(
       { email },
       { codeHash, expiresAt, verified: false },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // שליחת המייל דרך Brevo (Sendinblue)
+    // Send email via Brevo (Sendinblue)
     if (process.env.BREVO_API_KEY) {
       // Use Brevo API
       const brevoUrl = "https://api.brevo.com/v3/smtp/email";
@@ -43,9 +45,9 @@ exports.sendVerificationCode = async (req, res) => {
             email: process.env.EMAIL_USER || "noreply@example.com",
           },
           to: [{ email }],
-          subject: "קוד אימות",
-          htmlContent: `<p>קוד האימות שלך הוא: <strong>${code}</strong></p><p>הקוד תקף ל-10 דקות.</p>`,
-          textContent: `קוד האימות שלך הוא: ${code}\nהקוד תקף ל-10 דקות.`,
+          subject: "Verification Code",
+          htmlContent: `<p>Your verification code is: <strong>${code}</strong></p><p>The code is valid for 10 minutes.</p>`,
+          textContent: `Your verification code is: ${code}\nThe code is valid for 10 minutes.`,
         }),
       });
 
@@ -66,29 +68,29 @@ exports.sendVerificationCode = async (req, res) => {
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
         to: email,
-        subject: "קוד אימות",
-        text: `קוד האימות שלך הוא: ${code}\nהקוד תקף ל-10 דקות.`,
+        subject: "Verification Code",
+        text: `Your verification code is: ${code}\nThe code is valid for 10 minutes.`,
       });
 
       console.log("✅ Email sent via Gmail to:", email);
     }
 
-    res.json({ success: true, message: "קוד אימות נשלח למייל" });
+    res.json({ success: true, message: "Verification code sent to email" });
   } catch (err) {
     console.error("sendVerificationCode error:", err);
     res
       .status(500)
-      .json({ success: false, message: "שגיאה בשליחת קוד האימות" });
+      .json({ success: false, message: "Error sending verification code" });
   }
 };
 
-// אימות הקוד שהמשתמש קיבל
+// Verify the code received by the user
 exports.verifyCode = async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code)
     return res
       .status(400)
-      .json({ success: false, message: "חסר אימייל או קוד" });
+      .json({ success: false, message: "Missing email or code" });
 
   try {
     const record = await EmailVerification.findOne({ email }).select(
@@ -97,26 +99,26 @@ exports.verifyCode = async (req, res) => {
     if (!record)
       return res
         .status(404)
-        .json({ success: false, message: "לא נמצאה בקשת אימות" });
+        .json({ success: false, message: "Verification request not found" });
 
     if (record.expiresAt < new Date()) {
       return res
         .status(400)
-        .json({ success: false, message: "קוד האימות פג תוקף" });
+        .json({ success: false, message: "Verification code has expired" });
     }
 
     if (hashCode(code) !== record.codeHash) {
       return res
         .status(400)
-        .json({ success: false, message: "קוד אימות שגוי" });
+        .json({ success: false, message: "Invalid verification code" });
     }
 
-    // הצלחה – מוחקים את הרשומה מה-DB
+    // Success – delete the record from DB
     await EmailVerification.findByIdAndDelete(record._id);
 
-    res.json({ success: true, message: "האימות הצליח!" });
+    res.json({ success: true, message: "Verification successful!" });
   } catch (err) {
     console.error("verifyCode error:", err);
-    res.status(500).json({ success: false, message: "שגיאה באימות הקוד" });
+    res.status(500).json({ success: false, message: "Error verifying code" });
   }
 };
