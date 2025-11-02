@@ -1,53 +1,67 @@
-const TaskMessage = require('../models/TaskMessage');
+const TaskMessage = require("../models/TaskMessage");
 
-// יצירת הודעה חדשה
+// Create new message
 exports.createMessage = async (req, res) => {
   try {
     const { taskId, senderId, text, replyToMessageId } = req.body;
 
-    const message = new TaskMessage({ taskId, senderId, text, replyToMessageId });
+    const message = new TaskMessage({
+      taskId,
+      senderId,
+      text,
+      replyToMessageId,
+    });
     await message.save();
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      global.io.emit("taskMessageCreated", { message: message.toObject() });
+    }
+
     res.status(201).json(message);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה ביצירת הודעה', error: err });
+    res.status(500).json({ message: "Error creating message", error: err });
   }
 };
 
-// קבלת כל ההודעות
+// Get all messages
 exports.getAllMessages = async (req, res) => {
   try {
     const messages = await TaskMessage.find();
     res.json(messages);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת הודעות', error: err });
+    res.status(500).json({ message: "Error getting messages", error: err });
   }
 };
 
-// מחיקת הודעה
+// Delete message
 exports.deleteTaskMessage = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deleted = await TaskMessage.findByIdAndDelete(id);
-        if (!deleted) return res.status(404).json({ message: 'הודעה לא נמצאה' });
-        res.json({ message: 'הודעה נמחקה בהצלחה' });
-    } catch (err) {
-        res.status(500).json({ message: 'שגיאה במחיקת הודעה', error: err });
+  try {
+    const { id } = req.params;
+    const deleted = await TaskMessage.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Message not found" });
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      global.io.emit("taskMessageDeleted", { messageId: id });
     }
+
+    res.json({ message: "Message deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting message", error: err });
+  }
 };
 
-
-
-// עדכון כל הודעה לפי שדות
+// Update message by fields
 exports.updateTaskMessage = async (req, res) => {
   const messageId = req.params.id;
-  const updateFields = req.body; // כל השדות לעדכון
-
+  const updateFields = req.body;
 
   try {
     const message = await TaskMessage.findById(messageId);
-    if (!message) return res.status(404).json({ message: 'הודעה לא נמצאה' });
+    if (!message) return res.status(404).json({ message: "Message not found" });
 
-    // אם רוצים לבצע עדכון על מערך readBy
+    // Handle adding to readBy array
     if (updateFields.addToReadBy) {
       const userId = updateFields.addToReadBy;
       if (!message.readBy.includes(userId)) {
@@ -56,12 +70,18 @@ exports.updateTaskMessage = async (req, res) => {
       delete updateFields.addToReadBy;
     }
 
-    // עדכון שדות אחרים
+    // Update other fields
     Object.assign(message, updateFields);
 
     await message.save();
-    res.json({ message: 'הודעה עודכנה', messageDoc: message });
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      global.io.emit("taskMessageUpdated", { message: message.toObject() });
+    }
+
+    res.json({ message: "Message updated", messageDoc: message });
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בעדכון ההודעה', error: err });
+    res.status(500).json({ message: "Error updating message", error: err });
   }
 };

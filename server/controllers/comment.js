@@ -3,13 +3,19 @@ const Comment = require("../models/Comment");
 // Create comment
 exports.createComment = async (req, res) => {
   try {
-    const { userId, copyId, text, offset } = req.body;
+    const { userId, copyId, text, offset, replyTo } = req.body;
 
-    if (!userId || !copyId || !text || offset == null) {
+    if (!userId || !copyId || !text) {
       return res.status(404).json({ message: "Please fill in all details" });
     }
 
-    const comment = new Comment({ userId, copyId, text, offset });
+    const comment = new Comment({
+      userId,
+      copyId,
+      text,
+      offset,
+      replyTo: replyTo || null,
+    });
     await comment.save();
 
     // Populate user info for real-time emission

@@ -9,9 +9,22 @@ exports.createTask = async (req, res) => {
     const { experimentId, copiesId, investigatorId, coderId } = req.body;
     const task = new Task({ experimentId, copiesId, investigatorId, coderId });
     await task.save();
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      console.log(
+        "🔴🔴🔴 [BACKEND] Emitting taskCreated event for task:",
+        task._id
+      );
+      global.io.emit("taskCreated", { task: task.toObject() });
+      console.log("✅ taskCreated event emitted successfully");
+    } else {
+      console.error("❌ global.io is not available! Socket.io not working!");
+    }
+
     res.status(201).json(task);
   } catch (err) {
-    res.status(500).json({ error: "שגיאה ביצירת משימה", details: err });
+    res.status(500).json({ error: "Error creating task", details: err });
   }
 };
 
@@ -24,16 +37,16 @@ exports.getAllTasks = async (req, res) => {
   }
 };
 
-// עדכון כל שדה של משימה
+// Update any field of a task
 exports.updateTask = async (req, res) => {
   const taskId = req.params.id;
   const updateFields = req.body;
 
   try {
     const task = await Task.findById(taskId);
-    if (!task) return res.status(404).json({ message: "המשימה לא נמצאה" });
+    if (!task) return res.status(404).json({ message: "Task not found" });
 
-    // אם רוצים לבצע עדכון על מערך readBy
+    // Handle adding copy to task
     if (updateFields.addCopy) {
       const copyId = updateFields.addCopy;
       if (!task.copiesId.includes(copyId)) {
@@ -42,7 +55,7 @@ exports.updateTask = async (req, res) => {
       delete updateFields.addCopy;
     }
 
-    // הסרת עותק מהמערך
+    // Handle removing copy from task
     if (updateFields.removeCopy) {
       const copyId = updateFields.removeCopy;
       task.copiesId = task.copiesId.filter((id) => id.toString() !== copyId);
@@ -50,12 +63,24 @@ exports.updateTask = async (req, res) => {
     }
 
     Object.assign(task, updateFields);
-    task.lastUpdate = new Date(); // אם את רוצה לעקוב אחרי עדכונים
+    task.lastUpdate = new Date();
     await task.save();
 
-    res.json({ message: "המשימה עודכנה", task });
+    // 🔴 Emit real-time event
+    if (global.io) {
+      console.log(
+        "🔴🔴🔴 [BACKEND] Emitting taskUpdated event for task:",
+        task._id
+      );
+      global.io.emit("taskUpdated", { task: task.toObject() });
+      console.log("✅ taskUpdated event emitted successfully");
+    } else {
+      console.error("❌ global.io is not available! Socket.io not working!");
+    }
+
+    res.json({ message: "Task updated", task });
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בעדכון המשימה", error: err });
+    res.status(500).json({ message: "Error updating task", error: err });
   }
 };
 
@@ -65,11 +90,16 @@ exports.deleteTask = async (req, res) => {
   try {
     await deleteTaskCascade(id, null);
 
-    res.json({ message: "המשימה נמחקה בהצלחה", taskId: id });
+    // 🔴 Emit real-time event
+    if (global.io) {
+      global.io.emit("taskDeleted", { taskId: id });
+    }
+
+    res.json({ message: "Task deleted successfully", taskId: id });
   } catch (err) {
     console.error("Error deleting task:", err);
     res
       .status(err.status || 500)
-      .json({ message: "שגיאה במחיקת משימה", error: err.message || err });
+      .json({ message: "Error deleting task", error: err.message || err });
   }
 };

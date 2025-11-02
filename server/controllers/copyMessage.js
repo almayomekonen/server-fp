@@ -1,16 +1,26 @@
-const CopyMessage = require('../models/CopyMessage');
+const CopyMessage = require("../models/CopyMessage");
 
-
-// יצירת הודעה חדשה
+// Create new message
 exports.createMessage = async (req, res) => {
   try {
     const { copyId, senderId, text, replyToMessageId } = req.body;
 
-    const message = new CopyMessage({ copyId, senderId, text, replyToMessageId });
+    const message = new CopyMessage({
+      copyId,
+      senderId,
+      text,
+      replyToMessageId,
+    });
     await message.save();
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      global.io.emit("copyMessageCreated", { message: message.toObject() });
+    }
+
     res.status(201).json(message);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה ביצירת הודעה', error: err });
+    res.status(500).json({ message: "Error creating message", error: err });
   }
 };
 
@@ -20,36 +30,38 @@ exports.getAllMessages = async (req, res) => {
     const messages = await CopyMessage.find();
     res.json(messages);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת הודעות', error: err });
+    res.status(500).json({ message: "שגיאה בקבלת הודעות", error: err });
   }
 };
 
-// מחיקת הודעה
-
+// Delete message
 exports.deleteCopyMessage = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deleted = await CopyMessage.findByIdAndDelete(id);
-        if (!deleted) return res.status(404).json({ message: 'הודעה לא נמצאה' });
-        res.json({ message: 'הודעה נמחקה בהצלחה' });
-    } catch (err) {
-        res.status(500).json({ message: 'שגיאה במחיקת הודעה', error: err });
+  try {
+    const { id } = req.params;
+    const deleted = await CopyMessage.findByIdAndDelete(id);
+    if (!deleted) return res.status(404).json({ message: "Message not found" });
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      global.io.emit("copyMessageDeleted", { messageId: id });
     }
+
+    res.json({ message: "Message deleted successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Error deleting message", error: err });
+  }
 };
 
-
-
-// עדכון כל הודעה לפי שדות
+// Update message by fields
 exports.updateCopyMessage = async (req, res) => {
   const messageId = req.params.id;
-  const updateFields = req.body; // כל השדות לעדכון
-
+  const updateFields = req.body;
 
   try {
     const message = await CopyMessage.findById(messageId);
-    if (!message) return res.status(404).json({ message: 'הודעה לא נמצאה' });
+    if (!message) return res.status(404).json({ message: "Message not found" });
 
-    // אם רוצים לבצע עדכון על מערך readBy
+    // Handle adding to readBy array
     if (updateFields.addToReadBy) {
       const userId = updateFields.addToReadBy;
       if (!message.readBy.includes(userId)) {
@@ -58,17 +70,21 @@ exports.updateCopyMessage = async (req, res) => {
       delete updateFields.addToReadBy;
     }
 
-    // עדכון שדות אחרים
+    // Update other fields
     Object.assign(message, updateFields);
 
     await message.save();
-    res.json({ message: 'הודעה עודכנה', messageDoc: message });
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      global.io.emit("copyMessageUpdated", { message: message.toObject() });
+    }
+
+    res.json({ message: "Message updated", messageDoc: message });
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בעדכון ההודעה', error: err });
+    res.status(500).json({ message: "Error updating message", error: err });
   }
 };
-
-
 
 // controllers/copyMessage.js
 
@@ -79,7 +95,7 @@ exports.getMessagesForCopy = async (req, res) => {
     const messages = await CopyMessage.find({ copyId }).sort({ createdAt: 1 });
     res.json(messages);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת הודעות להעתק', error: err });
+    res.status(500).json({ message: "שגיאה בקבלת הודעות להעתק", error: err });
   }
 };
 
@@ -89,11 +105,13 @@ exports.getUnreadCount = async (req, res) => {
     const { copyId, userId } = req.params;
     const count = await CopyMessage.countDocuments({
       copyId,
-      readBy: { $ne: userId }
+      readBy: { $ne: userId },
     });
     res.json({ count });
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת כמות הודעות לא נקראו', error: err });
+    res
+      .status(500)
+      .json({ message: "שגיאה בקבלת כמות הודעות לא נקראו", error: err });
   }
 };
 
@@ -102,10 +120,9 @@ exports.getMessageById = async (req, res) => {
   try {
     const { id } = req.params;
     const message = await CopyMessage.findById(id);
-    if (!message) return res.status(404).json({ message: 'הודעה לא נמצאה' });
+    if (!message) return res.status(404).json({ message: "הודעה לא נמצאה" });
     res.json(message);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת הודעה', error: err });
+    res.status(500).json({ message: "שגיאה בקבלת הודעה", error: err });
   }
 };
-
