@@ -49,3 +49,18 @@ exports.getGroupsByExperimentId = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
+
+// קבלת קבוצה לפי ID
+exports.getGroupById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const group = await Group.findById(id);
+    if (!group) {
+      return res.status(404).json({ message: "Group not found" });
+    }
+    res.json(group);
+  } catch (err) {
+    console.error("Error fetching group by ID:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};

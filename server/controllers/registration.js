@@ -28,6 +28,13 @@ exports.registerRequest = async (req, res) => {
     await request.setPassword(password);
     await request.save();
 
+    // 🔴 Emit real-time event
+    if (global.io) {
+      console.log("🔴🔴🔴 [BACKEND] Emitting registrationRequestCreated");
+      global.io.emit("registrationRequestCreated", { request: request.toObject() });
+      console.log("✅ registrationRequestCreated event emitted successfully");
+    }
+
     res
       .status(201)
       .json({
@@ -57,6 +64,14 @@ exports.approveRegistrationRequest = async (req, res) => {
     await newUser.save();
     await request.deleteOne();
 
+    // 🔴 Emit real-time events
+    if (global.io) {
+      console.log("🔴🔴🔴 [BACKEND] Emitting registrationRequestApproved and userCreated");
+      global.io.emit("registrationRequestApproved", { requestId: id });
+      global.io.emit("userCreated", { user: newUser.toObject() });
+      console.log("✅ Events emitted successfully");
+    }
+
     res.status(201).json({ message: "User approved and added", user: newUser });
   } catch (err) {
     res.status(500).json({ message: "Server error", err });
@@ -68,6 +83,14 @@ exports.rejectRegistrationRequest = async (req, res) => {
 
   try {
     await RegistrationRequest.findByIdAndDelete(id);
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      console.log("🔴🔴🔴 [BACKEND] Emitting registrationRequestRejected");
+      global.io.emit("registrationRequestRejected", { requestId: id });
+      console.log("✅ registrationRequestRejected event emitted successfully");
+    }
+
     res.json({ message: "Request rejected and deleted" });
   } catch (err) {
     res.status(500).json({ message: "Server error", err });
