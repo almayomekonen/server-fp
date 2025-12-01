@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const commentController = require("../controllers/comment");
-const Comment = require("../models/Comment"); // <- הוסף את השורה הזו
+const Comment = require("../models/Comment"); // <- Add this line
 
 router.post("/", commentController.createComment);
 router.get("/", commentController.getAllComments);

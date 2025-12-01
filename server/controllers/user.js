@@ -8,7 +8,7 @@ exports.getAllUsers = async (req, res) => {
     const users = await User.find().select("-passwordHash");
     res.json(users);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בשרת", err });
+    res.status(500).json({ message: "Server error", err });
   }
 };
 
@@ -19,10 +19,10 @@ exports.updateUser = async (req, res) => {
   try {
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: "משתמש לא נמצא" });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    // אם רוצים לעדכן סיסמה חדשה – נטפל בזה בנפרד
+    // If we want to update new password - handle separately
     if (updateFields.newPassword) {
       await user.setPassword(updateFields.newPassword);
       delete updateFields.newPassword;
@@ -36,15 +36,15 @@ exports.updateUser = async (req, res) => {
       );
     }
 
-    // מיזוג שדות רגילים
+    // Merge regular fields
     Object.assign(user, updateFields);
     user.lastUpdate = new Date();
 
     await user.save();
 
-    res.json({ message: "המשתמש עודכן בהצלחה", user });
+    res.json({ message: "User updated successfully", user });
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בעדכון המשתמש", error: err });
+    res.status(500).json({ message: "Error updating user", error: err });
   }
 };
 
@@ -54,11 +54,11 @@ exports.deleteUser = async (req, res) => {
   try {
     await deleteUserCascade(id, null);
 
-    res.json({ message: "המשתמש נמחק בהצלחה", userId: id });
+    res.json({ message: "User deleted successfully", userId: id });
   } catch (err) {
     console.error("Error deleting user:", err);
     res
       .status(err.status || 500)
-      .json({ message: "שגיאה במחיקת משתמש", error: err.message || err });
+      .json({ message: "Error deleting user", error: err.message || err });
   }
 };

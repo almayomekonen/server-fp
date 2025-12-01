@@ -1,23 +1,19 @@
 //routes/registration.js
 
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const registrationController = require('../controllers/registration');
+const registrationController = require("../controllers/registration");
 
+// Register new request
+router.post("/", registrationController.registerRequest);
 
+// Get all pending requests
+router.get("/", registrationController.getAllRegistrationRequests);
 
-// רישום בקשה חדשה
-router.post('/', registrationController.registerRequest);
+// Approve request
+router.post("/:id/approve", registrationController.approveRegistrationRequest);
 
-// קבלת כל הבקשות הממתינות
-router.get('/', registrationController.getAllRegistrationRequests);
-
-// אישור בקשה
-router.post('/:id/approve', registrationController.approveRegistrationRequest);
-
-// דחיית בקשה
-router.delete('/:id', registrationController.rejectRegistrationRequest);
-
-
+// Reject request
+router.delete("/:id", registrationController.rejectRegistrationRequest);
 
 module.exports = router;

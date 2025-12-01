@@ -2,18 +2,18 @@ const Comparison = require("../models/Comparison");
 exports.createComparison = async (req, res) => {
   let { copyId1, copyId2 } = req.body;
   if (!copyId1 || !copyId2 || copyId1 === copyId2) {
-    return res.status(400).json({ message: "פרמטרים לא חוקיים" });
+    return res.status(400).json({ message: "Invalid parameters" });
   }
 
   try {
-    // מוודאים שאין כפילות (copyA תמיד קטן יותר)
+    // Ensure no duplicates (copyA is always smaller)
     if (copyId1 > copyId2) [copyId1, copyId2] = [copyId2, copyId1];
 
     const exists = await Comparison.findOne({ copyA: copyId1, copyB: copyId2 });
     if (exists) {
       return res
         .status(200)
-        .json({ message: "השוואה כבר קיימת", comparison: exists });
+        .json({ message: "Comparison already exists", comparison: exists });
     }
 
     const comparison = new Comparison({ copyA: copyId1, copyB: copyId2 });
@@ -21,8 +21,8 @@ exports.createComparison = async (req, res) => {
 
     res.status(201).json(comparison);
   } catch (err) {
-    console.error("שגיאה בהוספת השוואה:", err);
-    res.status(500).json({ message: "שגיאה בהוספת השוואה", error: err });
+    console.error("Error adding comparison:", err);
+    res.status(500).json({ message: "Error adding comparison", error: err });
   }
 };
 
@@ -31,7 +31,8 @@ exports.deleteComparison = async (req, res) => {
     const { copyId1, copyId2 } = req.body;
     let [a, b] = copyId1 > copyId2 ? [copyId2, copyId1] : [copyId1, copyId2];
     const deleted = await Comparison.findOneAndDelete({ copyA: a, copyB: b });
-    if (!deleted) return res.status(404).json({ message: "השוואה לא נמצאה" });
+    if (!deleted)
+      return res.status(404).json({ message: "Comparison not found" });
 
     // Emit Socket.io event to notify all connected clients
     if (global.io) {
@@ -45,9 +46,9 @@ exports.deleteComparison = async (req, res) => {
       );
     }
 
-    res.json({ message: "השוואה נמחקה בהצלחה" });
+    res.json({ message: "Comparison deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "שגיאה במחיקת השוואה", error: err });
+    res.status(500).json({ message: "Error deleting comparison", error: err });
   }
 };
 
@@ -55,24 +56,26 @@ exports.removeAllComparisons = async (req, res) => {
   const { copyId } = req.body;
 
   try {
-    // מוחק כל השוואה שבה העתק מעורב
+    // Delete all comparisons involving this copy
     await Comparison.deleteMany({
       $or: [{ copyA: copyId }, { copyB: copyId }],
     });
 
-    res.json({ message: "כל ההשוואות של העותק הוסרו בהצלחה" });
+    res.json({ message: "All comparisons for copy removed successfully" });
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בהסרת כל ההשוואות", error: err });
+    res
+      .status(500)
+      .json({ message: "Error removing all comparisons", error: err });
   }
 };
 
-// קבלת כל ההשוואות
+// Get all comparisons
 exports.getAllComparisons = async (req, res) => {
   try {
     const comparisons = await Comparison.find();
     res.json(comparisons);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת השוואות", error: err });
+    res.status(500).json({ message: "Error fetching comparisons", error: err });
   }
 };
 
@@ -84,30 +87,30 @@ exports.getComparisonsForCopyById = async (req, res) => {
       $or: [{ copyA: copyId }, { copyB: copyId }],
     });
 
-    // מחזיר רק את המזהים של העתק השני
+    // Return only the IDs of the second copy
     const result = comparisons.map((c) =>
       c.copyA.toString() === copyId ? c.copyB : c.copyA
     );
     res.json(result);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת השוואות", error: err });
+    res.status(500).json({ message: "Error fetching comparisons", error: err });
   }
 };
 
-// בדיקה אם השוואה כבר קיימת
+// Check if comparison already exists
 exports.checkComparisonExists = async (req, res) => {
   let { copyId1, copyId2 } = req.body;
   if (!copyId1 || !copyId2 || copyId1 === copyId2) {
-    return res.status(400).json({ message: "פרמטרים לא חוקיים" });
+    return res.status(400).json({ message: "Invalid parameters" });
   }
 
   try {
     if (copyId1 > copyId2) [copyId1, copyId2] = [copyId2, copyId1];
 
     const exists = await Comparison.findOne({ copyA: copyId1, copyB: copyId2 });
-    res.json({ exists: !!exists }); // מחזיר true או false
+    res.json({ exists: !!exists }); // Return true or false
   } catch (err) {
-    console.error("שגיאה בבדיקת השוואה:", err);
-    res.status(500).json({ message: "שגיאה בבדיקת השוואה", error: err });
+    console.error("Error checking comparison:", err);
+    res.status(500).json({ message: "Error checking comparison", error: err });
   }
 };

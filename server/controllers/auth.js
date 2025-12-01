@@ -8,11 +8,11 @@ exports.login = async (req, res) => {
   try {
     const user = await User.findOne({ username });
     if (!user)
-      return res.status(401).json({ message: "שם משתמש או סיסמה שגויים" });
+      return res.status(401).json({ message: "Invalid username or password" });
 
     const validPassword = await user.validatePassword(password);
     if (!validPassword)
-      return res.status(401).json({ message: "שם משתמש או סיסמה שגויים" });
+      return res.status(401).json({ message: "Invalid username or password" });
 
     const token = jwt.sign(
       {
@@ -24,13 +24,13 @@ exports.login = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // 🔥 שינוי הגדרות לפי סביבה
+    // 🔥 Change settings according to environment
     const isProduction = process.env.NODE_ENV === "production";
 
     const cookieOptions = {
       httpOnly: true,
-      secure: isProduction, // true רק בפרודקשן
-      sameSite: isProduction ? "none" : "lax", // none בפרודקשן, lax בפיתוח
+      secure: isProduction, // true only in production
+      sameSite: isProduction ? "none" : "lax", // none in production, lax in development
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
 
@@ -53,7 +53,7 @@ exports.login = async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בשרת", err });
+    res.status(500).json({ message: "Server error", err });
   }
 };
 

@@ -25,7 +25,7 @@ exports.getAllCopies = async (req, res) => {
     const copies = await Copy.find();
     res.json(copies);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת העותקים", error: err });
+    res.status(500).json({ message: "Error fetching copies", error: err });
   }
 };
 

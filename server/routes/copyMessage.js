@@ -9,7 +9,7 @@ router.get("/", authenticate, copyMessageController.getAllMessages);
 router.delete("/:id", authenticate, copyMessageController.deleteCopyMessage);
 router.put("/:id", authenticate, copyMessageController.updateCopyMessage);
 
-// פונקציות חדשות
+// New functions
 router.get("/byCopy/:copyId", copyMessageController.getMessagesForCopy);
 router.get(
   "/unreadCount/:copyId/:userId",

@@ -6,7 +6,7 @@ const mongoose = require("mongoose");
 const Experiment = require("../models/Experiment");
 const { deleteExperimentCascade } = require("../services/deleteCascade");
 
-// יצירת ניסוי
+// Create experiment
 exports.createExperiment = async (req, res) => {
   try {
     const { name, description, investigatorId, defaultTaskId } = req.body;
@@ -23,7 +23,7 @@ exports.createExperiment = async (req, res) => {
   }
 };
 
-// קבלת כל הניסויים
+// Get all experiments
 exports.getAllExperiments = async (req, res) => {
   try {
     const experiments = await Experiment.find();

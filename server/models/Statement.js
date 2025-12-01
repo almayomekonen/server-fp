@@ -3,8 +3,8 @@ const mongoose = require("mongoose");
 const statementSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    slateText: { type: Array, required: false }, // ✅ שדה חדש
-    text: { type: Array, required: false }, // ⚠️ שדה ישן - לתאימות לאחור
+    slateText: { type: Array, required: false }, // ✅ New field
+    text: { type: Array, required: false }, // ⚠️ Old field - for backward compatibility
     groupId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Group",
@@ -23,24 +23,24 @@ const statementSchema = new mongoose.Schema(
   }
 );
 
-// 🔄 Middleware: ממיר אוטומטית text -> slateText לפני שמירה
+// 🔄 Middleware: Automatically convert text -> slateText before saving
 statementSchema.pre("save", function (next) {
-  // אם יש text אבל אין slateText, העתק את text ל-slateText
+  // If there's text but no slateText, copy text to slateText
   if (this.text && !this.slateText) {
     this.slateText = this.text;
   }
-  // אם יש slateText, ודא שגם text מעודכן (לתאימות לאחור)
+  // If there's slateText, ensure text is also updated (for backward compatibility)
   if (this.slateText) {
     this.text = this.slateText;
   }
   next();
 });
 
-// 🔍 Middleware: ממיר אוטומטית text -> slateText אחרי קריאה מה-DB
-// זה יפעל גם על find, findOne, findById
+// 🔍 Middleware: Automatically convert text -> slateText after reading from DB
+// This will work for find, findOne, findById
 const convertTextToSlateText = function (doc) {
   if (doc) {
-    // אם יש text אבל אין slateText (או slateText ריק), העתק מ-text
+    // If there's text but no slateText (or slateText is empty), copy from text
     if (doc.text && (!doc.slateText || doc.slateText.length === 0)) {
       doc.slateText = doc.text;
     }

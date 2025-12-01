@@ -33,7 +33,7 @@ exports.getAllTasks = async (req, res) => {
     const tasks = await Task.find();
     res.json(tasks);
   } catch (err) {
-    res.status(500).json({ error: "שגיאה בקבלת משימות", details: err });
+    res.status(500).json({ error: "Error fetching tasks", details: err });
   }
 };
 

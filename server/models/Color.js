@@ -1,8 +1,8 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const colorSchema = new mongoose.Schema({
-  name: { type: String, required: true },   // שם הצבע (yellow, green)
-  code: { type: String, required: true }    // קוד HEX לדוגמה "#FFFF00"
+  name: { type: String, required: true }, // Color name (yellow, green)
+  code: { type: String, required: true }, // HEX code example "#FFFF00"
 });
 
-module.exports = mongoose.model('Color', colorSchema);
+module.exports = mongoose.model("Color", colorSchema);

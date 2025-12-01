@@ -1,12 +1,12 @@
 // routes/emailVerification.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
-const emailVerificationController = require('../controllers/emailVerification');
+const emailVerificationController = require("../controllers/emailVerification");
 
-// שליחת קוד אימות למייל
-router.post('/send-code', emailVerificationController.sendVerificationCode);
+// Send verification code to email
+router.post("/send-code", emailVerificationController.sendVerificationCode);
 
-// אימות הקוד שהמשתמש קיבל
-router.post('/verify-code', emailVerificationController.verifyCode);
+// Verify code that user received
+router.post("/verify-code", emailVerificationController.verifyCode);
 
 module.exports = router;

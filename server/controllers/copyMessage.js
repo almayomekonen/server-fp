@@ -24,13 +24,13 @@ exports.createMessage = async (req, res) => {
   }
 };
 
-// קבלת כל ההודעות
+// Get all messages
 exports.getAllMessages = async (req, res) => {
   try {
     const messages = await CopyMessage.find();
     res.json(messages);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת הודעות", error: err });
+    res.status(500).json({ message: "Error fetching messages", error: err });
   }
 };
 
@@ -88,18 +88,20 @@ exports.updateCopyMessage = async (req, res) => {
 
 // controllers/copyMessage.js
 
-// קבלת כל ההודעות להעתק מסוים
+// Get all messages for a specific copy
 exports.getMessagesForCopy = async (req, res) => {
   try {
     const { copyId } = req.params;
     const messages = await CopyMessage.find({ copyId }).sort({ createdAt: 1 });
     res.json(messages);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת הודעות להעתק", error: err });
+    res
+      .status(500)
+      .json({ message: "Error fetching messages for copy", error: err });
   }
 };
 
-// קבלת מספר הודעות שלא נקראו עבור משתמש בהעתק
+// Get unread message count for user in copy
 exports.getUnreadCount = async (req, res) => {
   try {
     const { copyId, userId } = req.params;
@@ -111,18 +113,18 @@ exports.getUnreadCount = async (req, res) => {
   } catch (err) {
     res
       .status(500)
-      .json({ message: "שגיאה בקבלת כמות הודעות לא נקראו", error: err });
+      .json({ message: "Error fetching unread message count", error: err });
   }
 };
 
-// קבלת הודעה לפי ID
+// Get message by ID
 exports.getMessageById = async (req, res) => {
   try {
     const { id } = req.params;
     const message = await CopyMessage.findById(id);
-    if (!message) return res.status(404).json({ message: "הודעה לא נמצאה" });
+    if (!message) return res.status(404).json({ message: "Message not found" });
     res.json(message);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת הודעה", error: err });
+    res.status(500).json({ message: "Error fetching message", error: err });
   }
 };

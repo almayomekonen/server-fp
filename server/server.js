@@ -23,7 +23,7 @@ app.use(helmet());
 app.use(express.json());
 app.use(cookieParser());
 
-// CORS Configuration - תיקון מלא!
+// CORS Configuration - Complete fix!
 const allowedOrigins = [
   "http://localhost:3000",
   "https://client-fp-production.up.railway.app",
@@ -40,9 +40,9 @@ app.use(
       }
       return callback(new Error("CORS policy: origin not allowed"), false);
     },
-    credentials: true, // ← חשוב!
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ← הוסף
-    allowedHeaders: ["Content-Type", "Authorization"], // ← הוסף
+    credentials: true, // ← Important!
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ← Add
+    allowedHeaders: ["Content-Type", "Authorization"], // ← Add
   })
 );
 
@@ -154,9 +154,9 @@ mongoose
         role: "admin",
         email: "finalprojecthadas@gmail.com",
       });
-      await defaultAdmin.setPassword("123");
+      await defaultAdmin.setPassword("security");
       await defaultAdmin.save();
-      console.log("🎉 Created default ADMIN with password 123");
+      console.log("🎉 Created default ADMIN with password security");
     } else {
       console.log("ℹ️ ADMIN user already exists");
     }

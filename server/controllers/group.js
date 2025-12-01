@@ -2,7 +2,7 @@ const Group = require("../models/Group");
 const { deleteGroupCascade } = require("../services/deleteCascade");
 const mongoose = require("mongoose");
 
-// יצירת קבוצה
+// Create group
 exports.createGroup = async (req, res) => {
   try {
     const { name, description, experimentId } = req.body;
@@ -10,17 +10,17 @@ exports.createGroup = async (req, res) => {
     await group.save();
     res.status(201).json(group);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה ביצירת קבוצה", error: err });
+    res.status(500).json({ message: "Error creating group", error: err });
   }
 };
 
-// קבלת כל הקבוצות
+// Get all groups
 exports.getAllGroups = async (req, res) => {
   try {
     const groups = await Group.find();
     res.json(groups);
   } catch (err) {
-    res.status(500).json({ message: "שגיאה בקבלת קבוצות", error: err });
+    res.status(500).json({ message: "Error fetching groups", error: err });
   }
 };
 
@@ -30,12 +30,12 @@ exports.deleteGroup = async (req, res) => {
   try {
     await deleteGroupCascade(id, null);
 
-    res.json({ message: "הקבוצה נמחקה בהצלחה", groupId: id });
+    res.json({ message: "Group deleted successfully", groupId: id });
   } catch (err) {
     console.error("Error deleting group:", err);
     res
       .status(err.status || 500)
-      .json({ message: "שגיאה במחיקת קבוצה", error: err.message || err });
+      .json({ message: "Error deleting group", error: err.message || err });
   }
 };
 
@@ -50,7 +50,7 @@ exports.getGroupsByExperimentId = async (req, res) => {
   }
 };
 
-// קבלת קבוצה לפי ID
+// Get group by ID
 exports.getGroupById = async (req, res) => {
   try {
     const { id } = req.params;

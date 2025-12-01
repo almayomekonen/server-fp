@@ -1,12 +1,23 @@
 // models/Comparison.js
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
-const comparisonSchema = new mongoose.Schema({
-  copyA: { type: mongoose.Schema.Types.ObjectId, ref: 'Copy', required: true },
-  copyB: { type: mongoose.Schema.Types.ObjectId, ref: 'Copy', required: true },
-}, { timestamps: true });
+const comparisonSchema = new mongoose.Schema(
+  {
+    copyA: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Copy",
+      required: true,
+    },
+    copyB: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Copy",
+      required: true,
+    },
+  },
+  { timestamps: true }
+);
 
-// כדי למנוע כפילויות – נוודא שכל זוג קיים רק פעם אחת
+// To prevent duplicates - ensure each pair exists only once
 comparisonSchema.index({ copyA: 1, copyB: 1 }, { unique: true });
 
-module.exports = mongoose.model('Comparison', comparisonSchema);
+module.exports = mongoose.model("Comparison", comparisonSchema);

@@ -1,9 +1,12 @@
-const mongoose = require('mongoose');
+const mongoose = require("mongoose");
 
 const styleSchema = new mongoose.Schema({
   boldEnabled: { type: Boolean, default: true },
+  boldName: { type: String, default: "Bold" },
   italicEnabled: { type: Boolean, default: false },
-  underlineEnabled: { type: Boolean, default: true }
+  italicName: { type: String, default: "Italic" },
+  underlineEnabled: { type: Boolean, default: true },
+  underlineName: { type: String, default: "Underline" },
 });
 
-module.exports = mongoose.model('StyleSetting', styleSchema);
+module.exports = mongoose.model("StyleSetting", styleSchema);

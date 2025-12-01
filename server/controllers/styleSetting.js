@@ -1,22 +1,23 @@
-const StyleSetting = require('../models/StyleSetting');
+const StyleSetting = require("../models/StyleSetting");
 
-// קבלת ההגדרות
+// Get settings
 exports.getStyle = async (req, res) => {
   try {
     let style = await StyleSetting.findOne();
     if (!style) {
-      style = new StyleSetting(); 
+      style = new StyleSetting();
       await style.save();
     }
     res.json(style);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בקבלת הגדרות עיצוב', error: err });
+    res
+      .status(500)
+      .json({ message: "Error fetching style settings", error: err });
   }
 };
 
-// עדכון ההגדרות
+// Update settings
 exports.updateStyle = async (req, res) => {
-
   try {
     let style = await StyleSetting.findOne();
     if (!style) {
@@ -27,6 +28,8 @@ exports.updateStyle = async (req, res) => {
     await style.save();
     res.json(style);
   } catch (err) {
-    res.status(500).json({ message: 'שגיאה בעדכון הגדרות עיצוב', error: err });
+    res
+      .status(500)
+      .json({ message: "Error updating style settings", error: err });
   }
 };
