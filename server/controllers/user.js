@@ -22,21 +22,15 @@ exports.updateUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // If we want to update new password - handle separately
     if (updateFields.newPassword) {
       await user.setPassword(updateFields.newPassword);
       delete updateFields.newPassword;
     }
 
-    // ✅ If role is changing, increment tokenVersion to invalidate old tokens
     if (updateFields.role && updateFields.role !== user.role) {
       user.tokenVersion = (user.tokenVersion || 0) + 1;
-      console.log(
-        `🔄 Role changed for user ${userId}: ${user.role} → ${updateFields.role}, tokenVersion: ${user.tokenVersion}`
-      );
     }
 
-    // Merge regular fields
     Object.assign(user, updateFields);
     user.lastUpdate = new Date();
 
@@ -53,6 +47,11 @@ exports.deleteUser = async (req, res) => {
 
   try {
     await deleteUserCascade(id, null);
+
+    // 🔴 Emit real-time event
+    if (global.io) {
+      global.io.emit("userDeleted", { userId: id });
+    }
 
     res.json({ message: "User deleted successfully", userId: id });
   } catch (err) {

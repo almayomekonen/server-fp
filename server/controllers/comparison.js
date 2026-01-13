@@ -6,7 +6,6 @@ exports.createComparison = async (req, res) => {
   }
 
   try {
-    // Ensure no duplicates (copyA is always smaller)
     if (copyId1 > copyId2) [copyId1, copyId2] = [copyId2, copyId1];
 
     const exists = await Comparison.findOne({ copyA: copyId1, copyB: copyId2 });
@@ -34,16 +33,12 @@ exports.deleteComparison = async (req, res) => {
     if (!deleted)
       return res.status(404).json({ message: "Comparison not found" });
 
-    // Emit Socket.io event to notify all connected clients
     if (global.io) {
       global.io.emit("comparisonCancelled", {
         copyId1: a,
         copyId2: b,
         message: "Comparison has been cancelled by the researcher",
       });
-      console.log(
-        `🔔 Emitted comparisonCancelled event for copies: ${a} and ${b}`
-      );
     }
 
     res.json({ message: "Comparison deleted successfully" });
@@ -56,7 +51,6 @@ exports.removeAllComparisons = async (req, res) => {
   const { copyId } = req.body;
 
   try {
-    // Delete all comparisons involving this copy
     await Comparison.deleteMany({
       $or: [{ copyA: copyId }, { copyB: copyId }],
     });
@@ -69,7 +63,6 @@ exports.removeAllComparisons = async (req, res) => {
   }
 };
 
-// Get all comparisons
 exports.getAllComparisons = async (req, res) => {
   try {
     const comparisons = await Comparison.find();

@@ -13,6 +13,7 @@ const userSchema = new mongoose.Schema(
       required: true,
     },
     tokenVersion: { type: Number, default: 0 }, // ✅ Track token invalidation
+    lastLogin: { type: Date }, // ✅ Track last login time
   },
   { timestamps: true }
 );

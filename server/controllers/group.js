@@ -28,7 +28,20 @@ exports.deleteGroup = async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Find copies that will be deleted to emit events
+    const copiesToDelete = await Copy.find({ groupId: id });
+
     await deleteGroupCascade(id, null);
+
+    // 🔴 Emit real-time events for deleted copies
+    if (global.io && copiesToDelete.length > 0) {
+      copiesToDelete.forEach((copy) => {
+        global.io.emit("copyDeleted", { copyId: copy._id });
+        console.log(
+          `🔴 [BACKEND] Emitted copyDeleted for cascading copy: ${copy._id}`
+        );
+      });
+    }
 
     res.json({ message: "Group deleted successfully", groupId: id });
   } catch (err) {

@@ -1,8 +1,8 @@
 // controllers/experimentController.js
 
 const User = require("../models/User");
-const mongoose = require("mongoose");
 
+const Task = require("../models/Task");
 const Experiment = require("../models/Experiment");
 const { deleteExperimentCascade } = require("../services/deleteCascade");
 
@@ -93,7 +93,34 @@ exports.deleteExperiment = async (req, res) => {
   const { id } = req.params;
 
   try {
+    // Find tasks to be deleted before cascade
+    const tasksToDelete = await Task.find({ experimentId: id });
+
+    const copiesToDelete = await require("../models/Copy").find({
+      experimentId: id,
+    });
+
     await deleteExperimentCascade(id, null);
+
+    // 🔴 Emit real-time events for deleted tasks
+    if (global.io && tasksToDelete.length > 0) {
+      tasksToDelete.forEach((task) => {
+        global.io.emit("taskDeleted", { taskId: task._id });
+        console.log(
+          `🔴 [BACKEND] Emitted taskDeleted for cascading task: ${task._id}`
+        );
+      });
+    }
+
+    // 🔴 Emit real-time events for deleted copies
+    if (global.io && copiesToDelete.length > 0) {
+      copiesToDelete.forEach((copy) => {
+        global.io.emit("copyDeleted", { copyId: copy._id });
+        console.log(
+          `🔴 [BACKEND] Emitted copyDeleted for cascading copy: ${copy._id}`
+        );
+      });
+    }
 
     console.log(`✅ Experiment deleted successfully: ${id}`);
     res.json({ message: "Experiment deleted successfully", experimentId: id });

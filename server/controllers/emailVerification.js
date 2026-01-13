@@ -19,7 +19,7 @@ exports.sendVerificationCode = async (req, res) => {
     // Generate random code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const codeHash = hashCode(code);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // Valid for 10 minutes
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     // upsert - create or update by email
     await EmailVerification.findOneAndUpdate(
