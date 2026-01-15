@@ -1,4 +1,5 @@
 const Group = require("../models/Group");
+const Copy = require("../models/Copy");
 const { deleteGroupCascade } = require("../services/deleteCascade");
 const mongoose = require("mongoose");
 
