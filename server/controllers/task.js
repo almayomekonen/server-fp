@@ -7,7 +7,15 @@ const mongoose = require("mongoose");
 exports.createTask = async (req, res) => {
   try {
     const { experimentId, copiesId, investigatorId, coderId } = req.body;
-    const task = new Task({ experimentId, copiesId, investigatorId, coderId });
+
+    // Validate required fields
+    if (!experimentId || !investigatorId || !coderId) {
+      return res.status(400).json({ 
+        error: "Missing required fields: experimentId, investigatorId, coderId" 
+      });
+    }
+
+    const task = new Task({ experimentId, copiesId: copiesId || [], investigatorId, coderId });
     await task.save();
 
     // 🔴 Emit real-time event

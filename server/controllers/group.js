@@ -29,19 +29,43 @@ exports.deleteGroup = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Find copies that will be deleted to emit events
-    const copiesToDelete = await Copy.find({ groupId: id });
+    // Find all statements and copies that will be deleted before cascade
+    const Statement = require("../models/Statement");
+    const statements = await Statement.find({ groupId: id });
+    const statementIds = statements.map(s => s._id.toString());
+    
+    // Find all copies under these statements
+    let copiesToDelete = [];
+    for (const statement of statements) {
+      const copies = await Copy.find({ statementId: statement._id });
+      copiesToDelete = copiesToDelete.concat(copies);
+    }
+    const copyIds = copiesToDelete.map(c => c._id.toString());
 
+    // Perform cascade deletion
     await deleteGroupCascade(id, null);
 
-    // 🔴 Emit real-time events for deleted copies
-    if (global.io && copiesToDelete.length > 0) {
-      copiesToDelete.forEach((copy) => {
-        global.io.emit("copyDeleted", { copyId: copy._id });
-        console.log(
-          `🔴 [BACKEND] Emitted copyDeleted for cascading copy: ${copy._id}`
-        );
+    // 🔴 Emit real-time events for all cascaded deletions
+    if (global.io) {
+      console.log(`🔴 [GROUP DELETE CASCADE] Emitting events for group ${id}`);
+      
+      // Emit statement deletions
+      statementIds.forEach(statementId => {
+        global.io.emit("statementDeleted", { statementId });
+        console.log(`  ✅ Emitted statementDeleted: ${statementId}`);
       });
+
+      // Emit copy deletions
+      copyIds.forEach(copyId => {
+        global.io.emit("copyDeleted", { copyId });
+        console.log(`  ✅ Emitted copyDeleted: ${copyId}`);
+      });
+
+      // Emit group deletion
+      global.io.emit("groupDeleted", { groupId: id });
+      console.log(`  ✅ Emitted groupDeleted: ${id}`);
+
+      console.log(`🔴 [GROUP DELETE CASCADE] Completed: ${statementIds.length} statements, ${copyIds.length} copies`);
     }
 
     res.json({ message: "Group deleted successfully", groupId: id });

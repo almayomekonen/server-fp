@@ -63,33 +63,36 @@ async function deleteExperimentCascade(experimentId, session) {
   await withSession(Experiment.findByIdAndDelete(experimentId), session);
 }
 
-/**
- * Delete User with all their creations (copies, experiments, tasks, messages, comments)
- */
+
 async function deleteUserCascade(userId, session) {
-  // Copies created as coder
+  // Collect all IDs before deletion for real-time events
   const copies = await withSession(
     Copy.find({ $or: [{ investigatorId: userId }, { coderId: userId }] }),
     session
   );
-  for (const copy of copies) {
-    await deleteCopyCascade(copy._id, session);
-  }
+  const copyIds = copies.map(c => c._id.toString());
 
-  // Experiments created as investigator
   const experiments = await withSession(
     Experiment.find({ investigatorId: userId }),
     session
   );
-  for (const exp of experiments) {
-    await deleteExperimentCascade(exp._id, session);
-  }
+  const experimentIds = experiments.map(e => e._id.toString());
 
-  // Tasks assigned or created
   const tasks = await withSession(
     Task.find({ $or: [{ investigatorId: userId }, { coderId: userId }] }),
     session
   );
+  const taskIds = tasks.map(t => t._id.toString());
+
+  // Perform cascading deletions
+  for (const copy of copies) {
+    await deleteCopyCascade(copy._id, session);
+  }
+
+  for (const exp of experiments) {
+    await deleteExperimentCascade(exp._id, session);
+  }
+
   for (const task of tasks) {
     await deleteTaskCascade(task._id, session);
   }
@@ -105,6 +108,31 @@ async function deleteUserCascade(userId, session) {
 
   // Finally, delete the user
   await withSession(User.findByIdAndDelete(userId), session);
+
+  // 🔴 Emit real-time events for all cascaded deletions
+  if (global.io) {
+    console.log(`🔴 [USER DELETE CASCADE] Emitting events for user ${userId}`);
+    
+    // Emit copy deletions
+    copyIds.forEach(copyId => {
+      global.io.emit("copyDeleted", { copyId });
+      console.log(`  ✅ Emitted copyDeleted: ${copyId}`);
+    });
+
+    // Emit experiment deletions
+    experimentIds.forEach(experimentId => {
+      global.io.emit("experimentDeleted", { experimentId });
+      console.log(`  ✅ Emitted experimentDeleted: ${experimentId}`);
+    });
+
+    // Emit task deletions
+    taskIds.forEach(taskId => {
+      global.io.emit("taskDeleted", { taskId });
+      console.log(`  ✅ Emitted taskDeleted: ${taskId}`);
+    });
+
+    console.log(`🔴 [USER DELETE CASCADE] Completed: ${copyIds.length} copies, ${experimentIds.length} experiments, ${taskIds.length} tasks`);
+  }
 }
 
 module.exports = {
