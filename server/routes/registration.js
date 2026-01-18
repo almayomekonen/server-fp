@@ -7,6 +7,9 @@ const registrationController = require("../controllers/registration");
 // Register new request
 router.post("/", registrationController.registerRequest);
 
+// Check username/email availability
+router.post("/check-availability", registrationController.checkAvailability);
+
 // Get all pending requests
 router.get("/", registrationController.getAllRegistrationRequests);
 

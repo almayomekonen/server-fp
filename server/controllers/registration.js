@@ -64,6 +64,46 @@ exports.approveRegistrationRequest = async (req, res) => {
     await newUser.save();
     await request.deleteOne();
 
+    // Send email notification to the user
+    try {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+
+      const mailOptions = {
+        from: process.env.EMAIL_USER,
+        to: newUser.email,
+        subject: "Account Approved - You Can Now Login",
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #1F4E78;">Account Approved!</h2>
+            <p>Hello <strong>${newUser.username}</strong>,</p>
+            <p>Great news! Your account has been approved by the administrator.</p>
+            <p>You can now login using your credentials.</p>
+            <p style="margin-top: 30px;">
+              <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}" 
+                 style="background-color: #1F4E78; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                Go to Login
+              </a>
+            </p>
+            <p style="margin-top: 30px; color: #666; font-size: 12px;">
+              If you have any questions, please contact the administrator.
+            </p>
+          </div>
+        `,
+      };
+
+      await transporter.sendMail(mailOptions);
+      console.log("✅ Approval email sent to:", newUser.email);
+    } catch (emailErr) {
+      console.error("⚠️ Failed to send approval email:", emailErr);
+      // Don't fail the approval if email sending fails
+    }
+
     // 🔴 Emit real-time events
     if (global.io) {
       console.log("🔴🔴🔴 [BACKEND] Emitting registrationRequestApproved and userCreated");
@@ -101,6 +141,32 @@ exports.getAllRegistrationRequests = async (req, res) => {
   try {
     const requests = await RegistrationRequest.find().select("-passwordHash");
     res.json(requests);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", err });
+  }
+};
+
+exports.checkAvailability = async (req, res) => {
+  const { username, email } = req.body;
+  
+  if (!username || !email) {
+    return res.status(400).json({ message: "Username and email are required" });
+  }
+
+  try {
+    const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+    const existingRequest = await RegistrationRequest.findOne({
+      $or: [{ username }, { email }],
+    });
+
+    if (existingUser || existingRequest) {
+      return res.status(200).json({
+        available: false,
+        message: "Username or email already exists or is pending approval.",
+      });
+    }
+
+    res.status(200).json({ available: true });
   } catch (err) {
     res.status(500).json({ message: "Server error", err });
   }
