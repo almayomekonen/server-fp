@@ -68,6 +68,22 @@ exports.approveRegistrationRequest = async (req, res) => {
     let emailSent = false;
     let lastError = null;
 
+    // Determine client URL - warn if missing in production
+    let clientUrl = process.env.CLIENT_URL;
+    
+    if (!clientUrl || clientUrl.trim() === '') {
+      if (process.env.NODE_ENV === 'production') {
+        console.error('⚠️ CRITICAL: CLIENT_URL not set in production! Email links will be broken.');
+        console.error('⚠️ Set CLIENT_URL environment variable to your frontend URL');
+        clientUrl = 'http://localhost:3000'; // Fallback but log error
+      } else {
+        console.log('ℹ️ CLIENT_URL not set, using localhost (development mode)');
+        clientUrl = 'http://localhost:3000';
+      }
+    } else {
+      console.log(`ℹ️ Using CLIENT_URL for email links: ${clientUrl}`);
+    }
+
     const emailSubject = "Account Approved - You Can Now Login";
     const emailHtml = `
       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
@@ -76,7 +92,7 @@ exports.approveRegistrationRequest = async (req, res) => {
         <p>Great news! Your account has been approved by the administrator.</p>
         <p>You can now login using your credentials.</p>
         <p style="margin-top: 30px;">
-          <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}" 
+          <a href="${clientUrl}" 
              style="background-color: #1F4E78; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
             Go to Login
           </a>
@@ -86,7 +102,7 @@ exports.approveRegistrationRequest = async (req, res) => {
         </p>
       </div>
     `;
-    const emailText = `Hello ${newUser.username},\n\nGreat news! Your account has been approved by the administrator.\n\nYou can now login using your credentials at: ${process.env.CLIENT_URL || 'http://localhost:3000'}\n\nIf you have any questions, please contact the administrator.`;
+    const emailText = `Hello ${newUser.username},\n\nGreat news! Your account has been approved by the administrator.\n\nYou can now login using your credentials at: ${clientUrl}\n\nIf you have any questions, please contact the administrator.`;
 
     // Try Brevo first (recommended for production, works on Railway)
     if (process.env.BREVO_API_KEY) {
