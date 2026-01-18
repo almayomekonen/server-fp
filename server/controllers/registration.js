@@ -65,42 +65,108 @@ exports.approveRegistrationRequest = async (req, res) => {
     await request.deleteOne();
 
     // Send email notification to the user
-    try {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
-        },
-      });
+    let emailSent = false;
+    let lastError = null;
 
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: newUser.email,
-        subject: "Account Approved - You Can Now Login",
-        html: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #1F4E78;">Account Approved!</h2>
-            <p>Hello <strong>${newUser.username}</strong>,</p>
-            <p>Great news! Your account has been approved by the administrator.</p>
-            <p>You can now login using your credentials.</p>
-            <p style="margin-top: 30px;">
-              <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}" 
-                 style="background-color: #1F4E78; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                Go to Login
-              </a>
-            </p>
-            <p style="margin-top: 30px; color: #666; font-size: 12px;">
-              If you have any questions, please contact the administrator.
-            </p>
-          </div>
-        `,
-      };
+    const emailSubject = "Account Approved - You Can Now Login";
+    const emailHtml = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1F4E78;">Account Approved!</h2>
+        <p>Hello <strong>${newUser.username}</strong>,</p>
+        <p>Great news! Your account has been approved by the administrator.</p>
+        <p>You can now login using your credentials.</p>
+        <p style="margin-top: 30px;">
+          <a href="${process.env.CLIENT_URL || 'http://localhost:3000'}" 
+             style="background-color: #1F4E78; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            Go to Login
+          </a>
+        </p>
+        <p style="margin-top: 30px; color: #666; font-size: 12px;">
+          If you have any questions, please contact the administrator.
+        </p>
+      </div>
+    `;
+    const emailText = `Hello ${newUser.username},\n\nGreat news! Your account has been approved by the administrator.\n\nYou can now login using your credentials at: ${process.env.CLIENT_URL || 'http://localhost:3000'}\n\nIf you have any questions, please contact the administrator.`;
 
-      await transporter.sendMail(mailOptions);
-      console.log("✅ Approval email sent to:", newUser.email);
-    } catch (emailErr) {
-      console.error("⚠️ Failed to send approval email:", emailErr);
+    // Try Brevo first (recommended for production, works on Railway)
+    if (process.env.BREVO_API_KEY) {
+      try {
+        const brevoUrl = "https://api.brevo.com/v3/smtp/email";
+        const response = await fetch(brevoUrl, {
+          method: "POST",
+          headers: {
+            accept: "application/json",
+            "api-key": process.env.BREVO_API_KEY,
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({
+            sender: {
+              name: "Deception Detection",
+              email: process.env.EMAIL_USER || "noreply@example.com",
+            },
+            to: [{ email: newUser.email }],
+            subject: emailSubject,
+            htmlContent: emailHtml,
+            textContent: emailText,
+          }),
+        });
+
+        if (response.ok) {
+          console.log("✅ Approval email sent via Brevo to:", newUser.email);
+          emailSent = true;
+        } else {
+          const errorData = await response.json();
+          console.error("❌ Brevo API error:", errorData);
+          lastError = errorData;
+          
+          // Check if it's an IP restriction error
+          if (errorData.code === 'unauthorized' || errorData.message?.includes('IP')) {
+            console.warn("⚠️ Brevo IP restriction detected. Falling back to Gmail...");
+          }
+        }
+      } catch (brevoErr) {
+        console.error("❌ Brevo request failed:", brevoErr.message);
+        lastError = brevoErr;
+      }
+    } else {
+      console.warn("⚠️ BREVO_API_KEY not configured. Skipping Brevo email method.");
+    }
+
+    // Fallback to Gmail SMTP (only works locally, fails on Railway)
+    if (!emailSent && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      // Skip Gmail fallback in production (Railway blocks SMTP)
+      if (process.env.NODE_ENV === 'production') {
+        console.warn("⚠️ Gmail SMTP fallback disabled in production (Railway blocks SMTP connections)");
+      } else {
+        try {
+          const transporter = nodemailer.createTransport({
+            service: "gmail",
+            auth: {
+              user: process.env.EMAIL_USER,
+              pass: process.env.EMAIL_PASS,
+            },
+          });
+
+          await transporter.sendMail({
+            from: process.env.EMAIL_USER,
+            to: newUser.email,
+            subject: emailSubject,
+            html: emailHtml,
+            text: emailText,
+          });
+
+          console.log("✅ Approval email sent via Gmail (fallback) to:", newUser.email);
+          emailSent = true;
+        } catch (gmailErr) {
+          console.error("❌ Gmail fallback also failed:", gmailErr.message);
+          lastError = gmailErr;
+        }
+      }
+    }
+
+    if (!emailSent) {
+      console.error("❌ All email methods failed. Last error:", lastError);
+      console.error("⚠️ User was approved but email notification was not sent to:", newUser.email);
       // Don't fail the approval if email sending fails
     }
 
